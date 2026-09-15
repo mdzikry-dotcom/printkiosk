@@ -15,14 +15,14 @@ if ($method === 'GET' && isset($_GET['action']) && $_GET['action'] === 'lookup-p
     $result = supabaseRequest('GET', '/print_jobs', null, [
         'print_pin' => 'eq.' . $pin,
         'select' => '*',
-        'status' => 'not.in.(completed,refund_issued)'
+        'status' => 'not.in.(completed,refund_issued)',
+        'order' => 'created_at.asc'
     ]);
     if ($result['error'] || empty($result['data'])) {
         echo json_encode(['success' => false, 'error' => 'No job found with this PIN']);
         exit;
     }
-    $job = $result['data'][0];
-    echo json_encode(['success' => true, 'job' => $job]);
+    echo json_encode(['success' => true, 'jobs' => $result['data'], 'job' => $result['data'][0]]);
     exit;
 }
 
@@ -110,8 +110,9 @@ if ($pages < 1) $pages = 1;
 
 $totalPrice = calculatePrice($pages, $colorMode, $paperSize, $sides, $copies);
 
-// Generate random 6-digit OTP print PIN
-$printPin = str_pad(random_int(0, 999999), 6, '0', STR_PAD_LEFT);
+// Generate random 6-digit OTP print PIN (use provided PIN if valid, so multi-file orders share one PIN)
+$requestedPin = trim($_POST['print_pin'] ?? '');
+$printPin = preg_match('/^\d{6}$/', $requestedPin) ? $requestedPin : str_pad(random_int(0, 999999), 6, '0', STR_PAD_LEFT);
 $jobId = generateJobId();
 
 // Create print job record

@@ -160,6 +160,7 @@ let faceStream = null;
 let matchedUser = null;
 let currentPinJob = null;
 let currentPinJobId = null;
+let currentPinJobs = [];
 let modelsLoaded = false;
 let animFrameId = null;
 
@@ -401,23 +402,15 @@ async function lookupPin() {
   try {
     const r = await fetch(API('upload', 'lookup-pin&pin=' + pin));
     const d = await r.json();
-    if (d.success && d.job) {
-      currentPinJob = d.job;
-      currentPinJobId = d.job.job_id;
-      if (d.job.paid) {
-        document.getElementById('receiptJobId').textContent = d.job.job_id;
-        document.getElementById('receiptFile').textContent = d.job.file_name;
-        document.getElementById('receiptPages').textContent = d.job.pages + ' pages';
-        document.getElementById('receiptColor').textContent = d.job.color_mode === 'color' ? 'Color' : 'B&W';
-        document.getElementById('receiptCopies').textContent = 'x' + (d.job.copies || 1);
-        document.getElementById('receiptTotal').textContent = 'RM ' + parseFloat(d.job.total_price).toFixed(2);
-        document.getElementById('receiptCoinsRow').style.display = 'none';
+    if (d.success && (d.jobs && d.jobs.length)) {
+      currentPinJobs = d.jobs;
+      currentPinJob = d.jobs[0];
+      currentPinJobId = null;
+      if (d.jobs.every(function(j) { return j.paid; })) {
+        showReceiptFromJobs(d.jobs, 0);
         document.getElementById('receiptOverlay').classList.remove('hidden');
       } else {
-        document.getElementById('pinJobId').textContent = d.job.job_id;
-        document.getElementById('pinFileName').textContent = d.job.file_name;
-        document.getElementById('pinPages').textContent = d.job.pages + 'p ' + d.job.color_mode + ' ' + d.job.paper_size;
-        document.getElementById('pinAmount').textContent = 'RM ' + parseFloat(d.job.total_price).toFixed(2);
+        renderPinJobs(d.jobs);
         document.getElementById('pinJobOverlay').classList.remove('hidden');
       }
       document.getElementById('pinInput').value = '';
@@ -432,7 +425,41 @@ async function lookupPin() {
   }
 }
 
-function closePinJob() { document.getElementById('pinJobOverlay').classList.add('hidden'); currentPinJob = null; }
+function renderPinJobs(jobs) {
+  var totalPages = jobs.reduce(function(a, j) { return a + (parseInt(j.pages) || 0); }, 0);
+  var totalPrice = jobs.reduce(function(a, j) { return a + (parseFloat(j.total_price) || 0); }, 0);
+  var allColors = jobs.map(function(j) { return j.color_mode || 'bw'; });
+  var colorLabel = allColors.every(function(c) { return c === allColors[0]; }) ? (allColors[0] === 'color' ? 'Color' : allColors[0] === 'mixed' ? 'Mixed' : 'B&W') : 'Mixed';
+  var fileLine = jobs.length === 1 ? jobs[0].file_name : jobs.length + ' files: ' + jobs.map(function(j) { return j.file_name.split('.').pop(); }).join(', ');
+  document.getElementById('pinJobId').textContent = jobs.map(function(j) { return j.job_id; }).join(', ');
+  document.getElementById('pinFileName').textContent = fileLine;
+  document.getElementById('pinPages').textContent = totalPages + 'p ' + colorLabel + ' (' + jobs.length + ' file' + (jobs.length > 1 ? 's' : '') + ')';
+  document.getElementById('pinAmount').textContent = 'RM ' + totalPrice.toFixed(2);
+}
+
+function showReceiptFromJobs(jobs, coinsEarned) {
+  var jobIds = jobs.map(function(j) { return j.job_id; });
+  var totalPrice = jobs.reduce(function(a, j) { return a + (parseFloat(j.total_price) || 0); }, 0);
+  var totalPages = jobs.reduce(function(a, j) { return a + (parseInt(j.pages) || 0); }, 0);
+  var totalCopies = jobs.reduce(function(a, j) { return a + (parseInt(j.copies) || 1); }, 0);
+  var allColors = jobs.map(function(j) { return j.color_mode || 'bw'; });
+  var colorLabel = allColors.every(function(c) { return c === allColors[0]; }) ? (allColors[0] === 'color' ? 'Color' : 'B&W') : 'Mixed';
+  var fileLine = jobs.length === 1 ? jobs[0].file_name : jobs.length + ' files';
+  document.getElementById('receiptJobId').textContent = jobIds.join(', ');
+  document.getElementById('receiptFile').textContent = fileLine;
+  document.getElementById('receiptPages').textContent = totalPages + ' pages';
+  document.getElementById('receiptColor').textContent = colorLabel;
+  document.getElementById('receiptCopies').textContent = 'x' + totalCopies;
+  document.getElementById('receiptTotal').textContent = 'RM ' + totalPrice.toFixed(2);
+  if (coinsEarned > 0) {
+    document.getElementById('receiptCoinsRow').style.display = 'block';
+    document.getElementById('receiptCoins').textContent = coinsEarned;
+  } else {
+    document.getElementById('receiptCoinsRow').style.display = 'none';
+  }
+}
+
+function closePinJob() { document.getElementById('pinJobOverlay').classList.add('hidden'); currentPinJob = null; currentPinJobId = null; currentPinJobs = []; }
 
 function proceedPinPayment() {
   document.getElementById('pinJobOverlay').classList.add('hidden');
@@ -441,45 +468,51 @@ function proceedPinPayment() {
 }
 
 async function confirmPayment() {
-  if (!currentPinJobId) return;
+  const jobs = currentPinJobId ? (currentPinJob ? [currentPinJob] : []) : (currentPinJobs || []);
+  if (!jobs.length) return;
   const btn = document.getElementById('payBtn');
   btn.disabled = true; btn.textContent = 'Processing...';
+  var paidAll = true;
+  let coins = 0;
   try {
-    const r = await fetch(API('payment', 'confirm'), {
-      method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ job_id: currentPinJobId })
-    });
-    const d = await r.json();
-    if (d.success) {
-      document.getElementById('paymentOverlay').classList.add('hidden');
-      const job = currentPinJob;
-      document.getElementById('receiptJobId').textContent = currentPinJobId;
-      document.getElementById('receiptFile').textContent = job ? job.file_name : '-';
-      document.getElementById('receiptPages').textContent = job ? job.pages + ' pages' : '-';
-      document.getElementById('receiptColor').textContent = job ? (job.color_mode === 'color' ? 'Color' : 'B&W') : '-';
-      document.getElementById('receiptCopies').textContent = job ? 'x' + (job.copies || 1) : '-';
-      document.getElementById('receiptTotal').textContent = 'RM ' + (job ? parseFloat(job.total_price).toFixed(2) : '0.00');
-      const isLoggedIn = !!localStorage.getItem('session_token');
-      if (isLoggedIn && d.coins_earned > 0) {
-        document.getElementById('receiptCoinsRow').style.display = 'block';
-        document.getElementById('receiptCoins').textContent = d.coins_earned;
+    for (let i = 0; i < jobs.length; i++) {
+      const r = await fetch(API('payment', 'confirm'), {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ job_id: jobs[i].job_id })
+      });
+      const d = await r.json();
+      if (d.success) {
+        coins += (d.coins_earned || 0);
+        jobs[i].paid = true;
       } else {
-        document.getElementById('receiptCoinsRow').style.display = 'none';
+        paidAll = false;
+        break;
       }
+    }
+    if (paidAll) {
+      document.getElementById('paymentOverlay').classList.add('hidden');
+      showReceiptFromJobs(jobs, coins);
       document.getElementById('receiptOverlay').classList.remove('hidden');
       btn.disabled = false; btn.textContent = 'Confirm Payment'; btn.style.display = '';
       document.getElementById('paySuccess').style.display = 'none';
-    } else { alert(d.error); btn.disabled = false; btn.textContent = 'Confirm Payment'; }
+    } else { alert('Payment failed'); btn.disabled = false; btn.textContent = 'Confirm Payment'; }
   } catch(e) { alert('Payment failed'); btn.disabled = false; btn.textContent = 'Confirm Payment'; }
 }
 
 function closeReceipt() {
   document.getElementById('receiptOverlay').classList.add('hidden');
-  if (currentPinJobId) {
-    fetch(API('data', 'complete-job'), {
-      method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ job_id: currentPinJobId })
-    }).finally(function() { location.reload(); });
+  const jobs = currentPinJobId ? (currentPinJob ? [currentPinJob] : []) : (currentPinJobs || []);
+  if (jobs.length) {
+    let done = 0;
+    jobs.forEach(function(j) {
+      fetch(API('data', 'complete-job'), {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ job_id: j.job_id })
+      }).finally(function() {
+        done++;
+        if (done >= jobs.length) { location.reload(); }
+      });
+    });
   } else {
     location.reload();
   }

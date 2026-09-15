@@ -1215,6 +1215,8 @@ async function placeOrder() {
   saveCurrentSettings();
   pendingUploadJobs = [];
 
+  var orderPin = String(Math.floor(100000 + Math.random() * 900000));
+
   try {
     for (let i = 0; i < bulkFiles.length; i++) {
       btn.textContent = 'Uploading file ' + (i + 1) + ' of ' + bulkFiles.length + '...';
@@ -1222,6 +1224,7 @@ async function placeOrder() {
       const s = item.settings;
       const fd = new FormData();
       fd.append('file', item.file);
+      fd.append('print_pin', orderPin);
       fd.append('color_mode', s.color || 'bw');
       fd.append('paper_size', 'a4');
       fd.append('sides', 'single');
@@ -1257,7 +1260,7 @@ async function placeOrder() {
   pendingUploadJobs.forEach(function(j) { totalPages += j.pages; totalCopies += j.copies || 1; totalPrice += parseFloat(j.total_price) || 0; });
   redeemOriginalTotal = totalPrice; // base amount before any coin discount
   var fileNames = pendingUploadJobs.map(function(j) { return j.file_name; });
-  var pinDisplay = pendingUploadJobs.map(function(j) { return j.print_pin; }).join(', ');
+  var pinDisplay = pendingUploadJobs.length ? (pendingUploadJobs[0].print_pin || orderPin) : orderPin;
   var allJobIds = pendingUploadJobs.map(function(j) { return j.job_id; });
   var colorModes = pendingUploadJobs.map(function(j) { return j.color_mode || 'bw'; });
   var bulkColor = colorModes.every(function(c) { return c === colorModes[0]; }) ? colorModes[0] : 'mixed';
@@ -1367,7 +1370,7 @@ function showReceipt(serverJobs, job) {
   document.getElementById('step3Pay').style.display = 'none';
   document.getElementById('step3Post').style.display = 'block';
 
-  var pinDisplay = serverJobs.map(function(sj) { return sj.print_pin; }).filter(Boolean).join(', ');
+  var pinDisplay = [...new Set(serverJobs.map(function(sj) { return sj.print_pin; }).filter(Boolean))].join(', ');
   if (!pinDisplay && job) pinDisplay = job.print_pin || '';
   var totalPrice = serverJobs.reduce(function(a, sj) { return a + (parseFloat(sj.total_price) || 0); }, 0);
   var totalPages = serverJobs.reduce(function(a, sj) { return a + (parseInt(sj.pages) || 0); }, 0);

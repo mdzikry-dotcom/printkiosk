@@ -21,15 +21,15 @@ async function handleLookupPin(url) {
   const result = await supabaseRequest('GET', '/print_jobs', null, {
     'print_pin': 'eq.' + pin,
     'select': '*',
-    'status': 'not.in.(completed,refund_issued)'
+    'status': 'not.in.(completed,refund_issued)',
+    'order': 'created_at.asc'
   });
 
   if (result.error || !result.data || result.data.length === 0) {
     return json({ success: false, 'error': 'No job found with this PIN' });
   }
 
-  const job = result.data[0];
-  return json({ success: true, job });
+  return json({ success: true, jobs: result.data, job: result.data[0] });
 }
 
 function getExtension(filename) {
@@ -58,6 +58,12 @@ async function handleUpload(event) {
   let contrast = 0;
   let cropMode = 'none';
   let finish = 'none';
+  let printPin = '';
+
+  const requestedPin = (value) => {
+    const pin = String(value || '').trim();
+    return /^\d{6}$/.test(pin) ? pin : '';
+  };
 
   if (contentType.includes('multipart/form-data')) {
     let rawBody;
@@ -90,6 +96,7 @@ async function handleUpload(event) {
     contrast = parseInt(fields.contrast) || 0;
     cropMode = fields.crop_mode || 'none';
     finish = fields.finish || 'none';
+    printPin = requestedPin(fields.print_pin);
 
     const jobId = generateJobId();
     const safeName = 'print_' + Date.now() + '_' + (file.filename || 'file').replace(/[^a-zA-Z0-9._-]/g, '_');
@@ -104,7 +111,7 @@ async function handleUpload(event) {
     fileName = file.filename || 'upload.' + ext;
     fileType = isImage(ext) ? 'image' : 'document';
 
-    const printPin = String(Math.floor(100000 + Math.random() * 900000));
+    if (!printPin) printPin = String(Math.floor(100000 + Math.random() * 900000));
     const jobData = {
       job_id: jobId,
       user_id: userId,
@@ -158,8 +165,9 @@ async function handleUpload(event) {
     contrast = parseInt(body.contrast) || 0;
     cropMode = body.crop_mode || 'none';
     finish = body.finish || 'none';
+    printPin = requestedPin(body.print_pin);
+    if (!printPin) printPin = String(Math.floor(100000 + Math.random() * 900000));
 
-    const printPin = String(Math.floor(100000 + Math.random() * 900000));
     const jobId = generateJobId();
 
     const jobData = {
