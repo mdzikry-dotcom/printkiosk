@@ -33,7 +33,11 @@
         <label for="password">Password</label>
         <input type="password" id="password" class="input" placeholder="Enter your password" required autocomplete="current-password">
       </div>
-      <div style="text-align:right; margin:-8px 0 14px;">
+      <div style="display:flex; justify-content:space-between; align-items:center; margin:-8px 0 14px;">
+        <label style="display:flex; align-items:center; gap:6px; font-size:13px; color:var(--gray-500); cursor:pointer; user-select:none;">
+          <input type="checkbox" id="rememberMe" style="accent-color:var(--primary); width:15px; height:15px; cursor:pointer;">
+          Remember me
+        </label>
         <a href="javascript:void(0)" onclick="showForgot()" style="font-size:13px; color:var(--primary);">Forgot password?</a>
       </div>
       <p id="loginError" class="error-text" style="display:none; text-align:center; margin-bottom:12px;"></p>
@@ -167,6 +171,12 @@ document.getElementById('loginForm').addEventListener('submit', async (e) => {
       btn.textContent = 'Sign In';
       return;
     }
+    const rememberMe = document.getElementById('rememberMe').checked;
+    if (rememberMe) {
+      PKS.set('remembered_login', JSON.stringify({ email: email.trim(), password: password }));
+    } else {
+      PKS.remove('remembered_login');
+    }
     PKS.set('session_token', data.session_token);
     PKS.set('user', JSON.stringify(data.user));
     if (data.user.role === 'admin') window.location.href = '../admin/admin.html';
@@ -182,11 +192,24 @@ document.getElementById('loginForm').addEventListener('submit', async (e) => {
 (function() {
   const emailInp = document.getElementById('email');
   const passInp = document.getElementById('password');
+  const rememberMeInp = document.getElementById('rememberMe');
   const loginBtn = document.getElementById('loginBtn');
   const errorEl = document.getElementById('loginError');
   const authDivider = document.querySelector('.auth-divider');
 
   PKS.init().then(function() {
+    const remembered = localStorage.getItem('remembered_login');
+    if (remembered) {
+      try {
+        const cred = JSON.parse(remembered);
+        if (cred && cred.email) {
+          emailInp.value = cred.email;
+          if (cred.password) passInp.value = cred.password;
+          rememberMeInp.checked = true;
+        }
+      } catch (e) {}
+    }
+
     const token = localStorage.getItem('session_token');
     if (!token) return;
 
