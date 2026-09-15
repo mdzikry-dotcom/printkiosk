@@ -123,9 +123,17 @@ function smtpSend(to, subject, htmlBody) {
     const tls = require('tls');
 
     const sock = net.connect(SMTP_PORT, SMTP_HOST);
+    let conn = sock;
     let buffer = '';
     let queue = [];
-    let upgraded = false;
+    let settled = false;
+
+    function done(result) {
+      if (settled) return;
+      settled = true;
+      try { sock.destroy(); } catch (e) {}
+      resolve(result);
+    }
 
     function onLine() {
       let idx;
@@ -138,20 +146,26 @@ function smtpSend(to, subject, htmlBody) {
       }
     }
 
+    function onData(d) { buffer += d.toString(); onLine(); }
+
+    const onSockError = () => done(false);
+    sock.on('data', onData);
+    sock.on('error', onSockError);
+
     function send(cmd) {
       return new Promise((res, rej) => {
-        const timer = setTimeout(() => rej(new Error('SMTP timeout')), 15000);
+        const timer = setTimeout(() => { rej(new Error('SMTP timeout')); done(false); }, 15000);
         queue.push((line) => {
           clearTimeout(timer);
           res(line);
         });
-        sock.write(cmd + '\r\n');
+        conn.write(cmd + '\r\n');
       });
     }
 
     function readReply() {
       return new Promise((res, rej) => {
-        const timer = setTimeout(() => rej(new Error('SMTP reply timeout')), 15000);
+        const timer = setTimeout(() => { rej(new Error('SMTP reply timeout')); done(false); }, 15000);
         const collect = (line) => {
           if (/^[0-9]{3} /.test(line)) {
             clearTimeout(timer);
@@ -164,38 +178,38 @@ function smtpSend(to, subject, htmlBody) {
       });
     }
 
-    sock.on('data', (d) => { buffer += d.toString(); onLine(); });
-    sock.on('error', () => resolve(false));
-
     async function run() {
       try {
         await readReply();
         await send('EHLO localhost');
 
         const starttls = await send('STARTTLS');
-        if (!/^220/.test(starttls)) return resolve(false);
+        if (!/^220/.test(starttls)) return done(false);
 
+        const secure = tls.connect({ socket: sock, servername: SMTP_HOST });
         await new Promise((res, rej) => {
-          const secure = tls.connect({ socket: sock, servername: SMTP_HOST }, () => {
-            upgraded = true;
-            res();
-          });
-          secure.on('error', rej);
+          secure.once('secureConnect', res);
+          secure.once('error', rej);
         });
+        secure.on('error', onSockError);
+
+        sock.removeListener('data', onData);
+        conn = secure;
+        secure.on('data', onData);
 
         await send('EHLO localhost');
 
         const auth = await send('AUTH PLAIN ' + Buffer.from('\0' + SMTP_USER + '\0' + SMTP_PASS).toString('base64'));
-        if (!/^235/.test(auth)) return resolve(false);
+        if (!/^235/.test(auth)) return done(false);
 
         const mf = await send('MAIL FROM:<' + SMTP_USER + '>');
-        if (!/^250/.test(mf)) return resolve(false);
+        if (!/^250/.test(mf)) return done(false);
 
         const rcpt = await send('RCPT TO:<' + to + '>');
-        if (!/^250/.test(rcpt)) return resolve(false);
+        if (!/^250/.test(rcpt)) return done(false);
 
         const data = await send('DATA');
-        if (!/^354/.test(data)) return resolve(false);
+        if (!/^354/.test(data)) return done(false);
 
         const cleanSubject = String(subject).replace(/[\r\n]+/g, ' ');
         const headers = 'From: ' + SMTP_FROM_NAME + ' <' + SMTP_USER + '>\r\n'
@@ -209,14 +223,13 @@ function smtpSend(to, subject, htmlBody) {
         await send(headers + '\r\n' + bodyData + '\r\n.');
 
         await send('QUIT');
-        resolve(true);
+        done(true);
       } catch (e) {
-        resolve(false);
+        done(false);
       }
     }
 
     run();
-    if (!upgraded) sock.setTimeout(15000, () => {}); // safety net; run() handles timeouts
   });
 }
 
