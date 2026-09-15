@@ -22,95 +22,113 @@
     Access-Control-Allow-Headers = "Content-Type, Authorization, X-Session-Token"
 
 # ── Block PHP / sensitive files (served as text on Netlify) ──
+# force=true is required: Netlify would otherwise serve the real
+# file instead of honoring the redirect.
 [[redirects]]
   from = "/config.php"
   to = "/.netlify/functions/"
   status = 404
+  force = true
 
 [[redirects]]
   from = "/admin_api.php"
   to = "/.netlify/functions/"
   status = 404
+  force = true
 
 [[redirects]]
   from = "/auth.php"
   to = "/.netlify/functions/"
   status = 404
+  force = true
 
 [[redirects]]
   from = "/coins_api.php"
   to = "/.netlify/functions/"
   status = 404
+  force = true
 
 [[redirects]]
   from = "/data_api.php"
   to = "/.netlify/functions/"
   status = 404
+  force = true
 
 [[redirects]]
   from = "/payment_handler.php"
   to = "/.netlify/functions/"
   status = 404
+  force = true
 
 [[redirects]]
   from = "/printer_api.php"
   to = "/.netlify/functions/"
   status = 404
+  force = true
 
 [[redirects]]
   from = "/upload_handler.php"
   to = "/.netlify/functions/"
   status = 404
+  force = true
 
 [[redirects]]
   from = "/run_migration.php"
   to = "/.netlify/functions/"
   status = 404
-
-[[redirects]]
-  from = "/website/upload.php"
-  to = "/website/upload.html"
-  status = 301
+  force = true
 
 [[redirects]]
   from = "/schema.sql"
   to = "/.netlify/functions/"
   status = 404
+  force = true
 
 [[redirects]]
   from = "/ngrok.exe"
   to = "/.netlify/functions/"
   status = 404
+  force = true
 
 [[redirects]]
   from = "/start.bat"
   to = "/.netlify/functions/"
   status = 404
+  force = true
 
 [[redirects]]
   from = "/start_ngrok.ps1"
   to = "/.netlify/functions/"
   status = 404
+  force = true
 
 [[redirects]]
   from = "/deno.lock"
   to = "/.netlify/functions/"
   status = 404
+  force = true
+
+[[redirects]]
+  from = "/website/upload.php"
+  to = "/website/upload.html"
+  status = 301
+  force = true
+
+[[redirects]]
+  from = "/netlify/*"
+  to = "/.netlify/functions/"
+  status = 404
+  force = true
 
 # ── Block uploads directory (user documents) ──────────────────
 [[redirects]]
   from = "/uploads/*"
   to = "/.netlify/functions/"
   status = 404
+  force = true
 
 [[redirects]]
   from = "/uploads"
   to = "/.netlify/functions/"
   status = 404
-
-# ── Block netlify/functions source directory (functions are at
-#    /.netlify/functions/* — NOT the same as /netlify/functions/) ─
-[[redirects]]
-  from = "/netlify/*"
-  to = "/.netlify/functions/"
-  status = 404
+  force = true
