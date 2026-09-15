@@ -19,3 +19,9 @@ function API(fn, action) {
     return url;
   }
 }
+
+if ('serviceWorker' in navigator && IS_NETLIFY && window.location.protocol.startsWith('https')) {
+  window.addEventListener('load', function() {
+    navigator.serviceWorker.register('/sw.js').catch(function() {});
+  });
+}
