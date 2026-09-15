@@ -1,0 +1,116 @@
+[build]
+  publish = "."
+  functions = "netlify/functions"
+
+[functions]
+  node_bundler = "esbuild"
+  included_files = []
+
+# ── CORS headers ──────────────────────────────────────────────
+[[headers]]
+  for = "/*"
+  [headers.values]
+    Access-Control-Allow-Origin = "*"
+    Access-Control-Allow-Methods = "GET, POST, PUT, PATCH, DELETE, OPTIONS"
+    Access-Control-Allow-Headers = "Content-Type, Authorization, X-Session-Token"
+
+[[headers]]
+  for = "/.netlify/functions/*"
+  [headers.values]
+    Access-Control-Allow-Origin = "*"
+    Access-Control-Allow-Methods = "GET, POST, PUT, PATCH, DELETE, OPTIONS"
+    Access-Control-Allow-Headers = "Content-Type, Authorization, X-Session-Token"
+
+# ── Block PHP / sensitive files (served as text on Netlify) ──
+[[redirects]]
+  from = "/config.php"
+  to = "/.netlify/functions/"
+  status = 404
+
+[[redirects]]
+  from = "/admin_api.php"
+  to = "/.netlify/functions/"
+  status = 404
+
+[[redirects]]
+  from = "/auth.php"
+  to = "/.netlify/functions/"
+  status = 404
+
+[[redirects]]
+  from = "/coins_api.php"
+  to = "/.netlify/functions/"
+  status = 404
+
+[[redirects]]
+  from = "/data_api.php"
+  to = "/.netlify/functions/"
+  status = 404
+
+[[redirects]]
+  from = "/payment_handler.php"
+  to = "/.netlify/functions/"
+  status = 404
+
+[[redirects]]
+  from = "/printer_api.php"
+  to = "/.netlify/functions/"
+  status = 404
+
+[[redirects]]
+  from = "/upload_handler.php"
+  to = "/.netlify/functions/"
+  status = 404
+
+[[redirects]]
+  from = "/run_migration.php"
+  to = "/.netlify/functions/"
+  status = 404
+
+[[redirects]]
+  from = "/website/upload.php"
+  to = "/website/upload.html"
+  status = 301
+
+[[redirects]]
+  from = "/schema.sql"
+  to = "/.netlify/functions/"
+  status = 404
+
+[[redirects]]
+  from = "/ngrok.exe"
+  to = "/.netlify/functions/"
+  status = 404
+
+[[redirects]]
+  from = "/start.bat"
+  to = "/.netlify/functions/"
+  status = 404
+
+[[redirects]]
+  from = "/start_ngrok.ps1"
+  to = "/.netlify/functions/"
+  status = 404
+
+[[redirects]]
+  from = "/deno.lock"
+  to = "/.netlify/functions/"
+  status = 404
+
+# ── Block uploads directory (user documents) ──────────────────
+[[redirects]]
+  from = "/uploads/*"
+  to = "/.netlify/functions/"
+  status = 404
+
+[[redirects]]
+  from = "/uploads"
+  to = "/.netlify/functions/"
+  status = 404
+
+# ── Block netlify/functions source directory (functions are at
+#    /.netlify/functions/* — NOT the same as /netlify/functions/) ─
+[[redirects]]
+  from = "/netlify/*"
+  to = "/.netlify/functions/"
+  status = 404

@@ -1,0 +1,231 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>PrintKiosk - Login</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../styles.css">
+<script src="../frontend_config.js"></script>
+<script src="pstore.js"></script>
+</head>
+<body>
+<div class="auth-page">
+  <div class="auth-card animate-slide-up">
+    <div class="auth-header">
+      <div class="auth-logo">
+        <svg viewBox="0 0 512 512" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <defs><linearGradient id="abg" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="#4C7CFF"/><stop offset="100%" stop-color="#1C2740"/></linearGradient><linearGradient id="afold" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="#E4EBFA"/><stop offset="100%" stop-color="#C7D4EE"/></linearGradient></defs>
+          <rect width="512" height="512" rx="112" fill="url(#abg)"/>
+          <g transform="rotate(-7 256 256)"><rect x="149" y="352" width="214" height="32" rx="16" fill="#22C7B8"/><path d="M179 136L305 136L351 182L351 358Q351 376 333 376L179 376Q161 376 161 358L161 154Q161 136 179 136Z" fill="#FFF"/><path d="M305 136L351 182L305 182Z" fill="url(#afold)"/></g>
+        </svg>
+      </div>
+      <h1 class="auth-title">Welcome back</h1>
+      <p class="auth-subtitle">Sign in to your PrintKiosk account</p>
+    </div>
+
+    <form id="loginForm">
+      <div class="form-group">
+        <label for="email">Email Address</label>
+        <input type="email" id="email" class="input" placeholder="name@gmail.com" required autocomplete="email">
+      </div>
+      <div class="form-group">
+        <label for="password">Password</label>
+        <input type="password" id="password" class="input" placeholder="Enter your password" required autocomplete="current-password">
+      </div>
+      <div style="text-align:right; margin:-8px 0 14px;">
+        <a href="javascript:void(0)" onclick="showForgot()" style="font-size:13px; color:var(--primary);">Forgot password?</a>
+      </div>
+      <p id="loginError" class="error-text" style="display:none; text-align:center; margin-bottom:12px;"></p>
+      <button type="submit" class="btn btn-primary btn-block btn-lg" id="loginBtn">Sign In</button>
+    </form>
+
+    <form id="forgotForm" style="display:none;">
+      <div class="auth-header" style="margin-bottom:8px;">
+        <h1 class="auth-title" style="font-size:22px;">Reset Password</h1>
+        <p class="auth-subtitle">Enter your email and we'll send you a link to create a new password</p>
+      </div>
+
+      <div class="form-group">
+        <label for="forgotEmail">Email Address</label>
+        <input type="email" id="forgotEmail" class="input" placeholder="name@gmail.com" required autocomplete="email">
+      </div>
+      <p id="forgotMsg" class="error-text" style="display:none; text-align:center; margin-bottom:12px;"></p>
+      <button type="submit" class="btn btn-primary btn-block btn-lg" id="forgotBtn">Send Reset Link</button>
+      <div id="forgotHint" style="display:none; text-align:center; margin-top:12px; font-size:13px;">
+        <a href="javascript:void(0)" onclick="sendResetLink(forgotEmailPending || document.getElementById('forgotEmail').value.trim())" style="color:var(--primary);">Didn't get the email? Send it again</a>
+      </div>
+      <div style="text-align:center; margin-top:14px; font-size:13px; color:var(--gray-500);">
+        <a href="javascript:void(0)" onclick="showLogin()" style="color:var(--primary);">Back to login</a>
+      </div>
+    </form>
+
+    <div class="auth-divider"><span>or</span></div>
+
+    <a href="upload.html" class="btn btn-secondary btn-block">Continue as Guest</a>
+
+    <div class="auth-footer">
+      Don't have an account? <a href="register.html">Create one</a>
+    </div>
+  </div>
+</div>
+
+<script>
+const SUPABASE_URL = CONFIG.SUPABASE_URL;
+const SUPABASE_KEY = CONFIG.SUPABASE_KEY;
+
+function showForgot() {
+  document.getElementById('loginForm').style.display = 'none';
+  document.getElementById('forgotForm').style.display = 'block';
+  document.getElementById('forgotMsg').style.display = 'none';
+  document.getElementById('forgotEmail').focus();
+}
+
+function showLogin() {
+  document.getElementById('forgotForm').style.display = 'none';
+  document.getElementById('loginForm').style.display = 'block';
+}
+
+function showResetMsg(el, msg, isSuccess) {
+  el.className = isSuccess ? 'success-text' : 'error-text';
+  el.style.color = isSuccess ? '#16a34a' : '#dc2626';
+  el.textContent = msg;
+  el.style.display = 'block';
+}
+
+let forgotEmailPending = '';
+
+function setLoading(btn, loading, text) {
+  btn.disabled = loading;
+  if (loading) {
+    btn.innerHTML = '<span class="btn-spinner"></span>' + text;
+  } else {
+    btn.innerHTML = text;
+  }
+}
+
+function sendResetLink(email) {
+  const msgEl = document.getElementById('forgotMsg');
+  const btn = document.getElementById('forgotBtn');
+
+  setLoading(btn, true, 'Sending...');
+
+  return fetch(API('auth', 'forgot-password'), {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ email, site: window.location.origin })
+  })
+  .then(async (res) => {
+    const data = await res.json().catch(() => ({}));
+    if (!data.success) throw new Error(data.error || 'Request failed');
+    return data;
+  })
+  .then((data) => {
+    forgotEmailPending = email;
+    showResetMsg(msgEl, data.message || 'If an account exists, a reset link has been sent. Check your inbox (including spam).', true);
+    const hint = document.getElementById('forgotHint');
+    if (hint) hint.style.display = 'block';
+  })
+  .catch((err) => {
+    showResetMsg(msgEl, err.message || 'Connection error. Please try again.', false);
+  })
+  .finally(() => {
+    setLoading(btn, false, 'Send Reset Link');
+  });
+}
+
+document.getElementById('forgotForm').addEventListener('submit', (e) => {
+  e.preventDefault();
+  const email = document.getElementById('forgotEmail').value.trim();
+  const msgEl = document.getElementById('forgotMsg');
+  msgEl.style.display = 'none';
+  sendResetLink(email);
+});
+
+document.getElementById('loginForm').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const email = document.getElementById('email').value;
+  const password = document.getElementById('password').value;
+  const errorEl = document.getElementById('loginError');
+  const btn = document.getElementById('loginBtn');
+
+  errorEl.style.display = 'none';
+  btn.disabled = true;
+  btn.textContent = 'Signing in...';
+
+  try {
+    const res = await fetch(API('auth', 'login'), {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, password })
+    });
+    const data = await res.json();
+    if (!data.success) {
+      errorEl.textContent = data.error || 'Login failed';
+      errorEl.style.display = 'block';
+      btn.disabled = false;
+      btn.textContent = 'Sign In';
+      return;
+    }
+    PKS.set('session_token', data.session_token);
+    PKS.set('user', JSON.stringify(data.user));
+    if (data.user.role === 'admin') window.location.href = '../admin/admin.html';
+    else window.location.href = 'customer.html';
+  } catch (err) {
+    errorEl.textContent = 'Connection error. Please try again.';
+    errorEl.style.display = 'block';
+    btn.disabled = false;
+    btn.textContent = 'Sign In';
+  }
+});
+
+(function() {
+  const emailInp = document.getElementById('email');
+  const passInp = document.getElementById('password');
+  const loginBtn = document.getElementById('loginBtn');
+  const errorEl = document.getElementById('loginError');
+  const authDivider = document.querySelector('.auth-divider');
+
+  PKS.init().then(function() {
+    const token = localStorage.getItem('session_token');
+    if (!token) return;
+
+    emailInp.disabled = true;
+    passInp.disabled = true;
+    loginBtn.disabled = true;
+    if (authDivider) authDivider.style.display = 'none';
+    errorEl.style.display = 'block';
+    errorEl.style.color = 'var(--gray-500)';
+    errorEl.textContent = 'Restoring your session...';
+
+    fetch(API('auth', 'verify-session'), {
+      headers: { 'X-Session-Token': token }
+    })
+    .then(r => r.json())
+    .then(data => {
+      if (data.success) {
+        PKS.set('user', JSON.stringify(data.user));
+        if (data.user.role === 'admin') window.location.href = '../admin/admin.html';
+        else window.location.href = 'customer.html';
+      } else {
+        PKS.remove('session_token');
+        PKS.remove('user');
+        restoreForm();
+      }
+    })
+    .catch(() => {
+      restoreForm();
+    });
+
+    function restoreForm() {
+      emailInp.disabled = false;
+      passInp.disabled = false;
+      loginBtn.disabled = false;
+      if (authDivider) authDivider.style.display = '';
+      errorEl.style.display = 'none';
+    }
+  });
+})();
+</script>
+</body>
+</html>

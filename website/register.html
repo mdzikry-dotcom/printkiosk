@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>PrintKiosk - Register</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../styles.css">
+<script src="../frontend_config.js"></script>
+<script src="pstore.js"></script>
+</head>
+<body>
+<div class="auth-page">
+  <div class="auth-card animate-slide-up" style="max-width:480px;">
+    <div class="auth-header">
+      <div class="auth-logo">
+        <svg viewBox="0 0 512 512" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <defs><linearGradient id="rbg" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="#4C7CFF"/><stop offset="100%" stop-color="#1C2740"/></linearGradient><linearGradient id="rfold" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="#E4EBFA"/><stop offset="100%" stop-color="#C7D4EE"/></linearGradient></defs>
+          <rect width="512" height="512" rx="112" fill="url(#rbg)"/>
+          <g transform="rotate(-7 256 256)"><rect x="149" y="352" width="214" height="32" rx="16" fill="#22C7B8"/><path d="M179 136L305 136L351 182L351 358Q351 376 333 376L179 376Q161 376 161 358L161 154Q161 136 179 136Z" fill="#FFF"/><path d="M305 136L351 182L305 182Z" fill="url(#rfold)"/></g>
+        </svg>
+      </div>
+      <h1 class="auth-title">Create Account</h1>
+      <p class="auth-subtitle">Earn 10 bonus coins on sign up</p>
+    </div>
+
+    <form id="registerForm">
+      <div class="form-group">
+        <label for="name">Full Name</label>
+        <input type="text" id="name" class="input" placeholder="John Doe" required>
+      </div>
+      <div class="form-group">
+        <label for="email">Gmail Address</label>
+        <input type="email" id="email" class="input" placeholder="name@gmail.com" required pattern="[a-zA-Z0-9._%+\-]+@gmail\.com" title="Only Gmail addresses are accepted" oninput="validateGmailInput()">
+      </div>
+      <div class="form-group">
+        <label for="phone">Phone Number</label>
+        <input type="tel" id="phone" class="input" placeholder="010-1234567 (Malaysia)" required oninput="validatePhoneInput()">
+      </div>
+      <div class="form-group">
+        <label for="password">Password</label>
+        <input type="password" id="password" class="input" placeholder="Min 6 characters" minlength="6" required>
+      </div>
+      <div class="form-group">
+        <label for="confirm">Confirm Password</label>
+        <input type="password" id="confirm" class="input" placeholder="Re-enter password" required>
+      </div>
+      <div id="faceStep" style="margin-top:20px; padding:20px; background:var(--primary-light); border-radius:var(--radius-lg); border:2px solid var(--primary);">
+        <h3 style="text-align:center; margin-bottom:8px; font-size:15px; font-weight:600;">Face Capture <span style="color:var(--gray-400); font-size:12px;">(Optional)</span></h3>
+        <p style="text-align:center; color:var(--gray-500); font-size:13px; margin-bottom:16px;">
+          Position your face in the frame. Auto-detection will capture when ready.
+        </p>
+        <div style="position:relative; border-radius:var(--radius); overflow:hidden; background:#000;">
+          <video id="video" width="100%" height="280" autoplay muted style="display:block; transform:scaleX(-1);"></video>
+          <canvas id="overlay" style="position:absolute; top:0; left:0; width:100%; height:280px; pointer-events:none; transform:scaleX(-1);"></canvas>
+          <div id="faceGuide" style="position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); width:140px; height:170px; border:2px dashed rgba(255,255,255,0.5); border-radius:50%; pointer-events:none;"></div>
+        </div>
+        <div style="display:flex; gap:8px; margin-top:12px; justify-content:center;">
+          <button type="button" id="startCamBtn" class="btn btn-secondary">Start Camera</button>
+        </div>
+        <div id="photoPreview" style="display:flex; gap:8px; margin-top:12px; justify-content:center;">
+          <div style="width:72px; height:72px; background:var(--gray-100); border-radius:var(--radius); display:flex; align-items:center; justify-content:center; border:2px dashed var(--gray-200);" id="preview1"></div>
+          <div style="width:72px; height:72px; background:var(--gray-100); border-radius:var(--radius); display:flex; align-items:center; justify-content:center; border:2px dashed var(--gray-200);" id="preview2"></div>
+          <div style="width:72px; height:72px; background:var(--gray-100); border-radius:var(--radius); display:flex; align-items:center; justify-content:center; border:2px dashed var(--gray-200);" id="preview3"></div>
+        </div>
+        <p id="faceStatus" style="text-align:center; font-size:13px; margin-top:8px; color:var(--gray-500);"></p>
+      </div>
+
+      <div id="verifyStep" style="display:none; margin-top:20px; padding:20px; background:var(--primary-light); border-radius:var(--radius-lg); border:2px solid var(--primary);">
+        <h3 style="text-align:center; margin-bottom:8px; font-size:15px; font-weight:600;">Verify Your Email</h3>
+        <p style="text-align:center; color:var(--gray-500); font-size:13px; margin-bottom:16px;">
+          We sent a 6-digit code to <strong id="verifyEmailDisplay"></strong>. Enter it below to complete registration.
+        </p>
+        <div style="text-align:center;">
+          <input type="text" id="verifyCode" class="input" placeholder="------" maxlength="6" inputmode="numeric" pattern="\d{6}" style="text-align:center; font-size:24px; letter-spacing:8px; width:180px;" oninput="this.value=this.value.replace(/\D/g,'')">
+        </div>
+        <div style="display:flex; gap:8px; margin-top:16px;">
+          <button type="button" class="btn btn-secondary" style="flex:1;" onclick="resendCode()" id="resendBtn">Resend Code</button>
+          <button type="button" class="btn btn-primary" style="flex:1;" onclick="verifyEmail()" id="verifyBtn">Verify & Complete</button>
+        </div>
+        <p id="verifyError" class="error-text" style="display:none; text-align:center; margin-top:12px;"></p>
+      </div>
+
+      <button type="submit" class="btn btn-primary btn-block btn-lg" id="registerBtn" style="margin-top:20px;">Create Account</button>
+      <p style="text-align:center; margin-top:12px;">
+        <button type="button" id="skipFaceBtn" style="background:none; border:none; color:var(--gray-400); font-size:13px; cursor:pointer; text-decoration:underline;">Skip face capture</button>
+      </p>
+      <p id="registerError" class="error-text" style="display:none; text-align:center; margin-top:12px;"></p>
+    </form>
+
+    <div class="auth-footer">
+      Already have an account? <a href="login.html">Sign in</a>
+    </div>
+  </div>
+</div>
+
+<script defer src="https://cdn.jsdelivr.net/npm/face-api.js@0.22.2/dist/face-api.min.js"></script>
+<script defer src="register.js"></script>
+</body>
+</html>

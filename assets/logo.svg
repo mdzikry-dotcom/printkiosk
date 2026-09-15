@@ -1,0 +1,37 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <defs>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#4C7CFF"/>
+      <stop offset="100%" stop-color="#1C2740"/>
+    </linearGradient>
+    <linearGradient id="foldShade" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#E4EBFA"/>
+      <stop offset="100%" stop-color="#C7D4EE"/>
+    </linearGradient>
+  </defs>
+
+  <!-- app tile -->
+  <rect width="512" height="512" rx="112" fill="url(#bg)"/>
+
+  <g transform="rotate(-7 256 256)">
+    <!-- ink / slot accent, peeking beneath the sheet -->
+    <rect x="149" y="352" width="214" height="32" rx="16" fill="#22C7B8"/>
+
+    <!-- paper sheet with a folded top-right corner -->
+    <path d="
+      M 179 136
+      L 305 136
+      L 351 182
+      L 351 358
+      Q 351 376 333 376
+      L 179 376
+      Q 161 376 161 358
+      L 161 154
+      Q 161 136 179 136
+      Z"
+      fill="#FFFFFF"/>
+
+    <!-- folded corner flap -->
+    <path d="M 305 136 L 351 182 L 305 182 Z" fill="url(#foldShade)"/>
+  </g>
+</svg>

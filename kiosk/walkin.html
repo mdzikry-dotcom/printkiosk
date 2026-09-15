@@ -1,0 +1,493 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PrintKiosk - Kiosk</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../styles.css">
+<script src="../frontend_config.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+<script>pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';</script>
+<style>
+  body { background: #0f172a; color: white; margin:0; font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; }
+  .kiosk { max-width: 640px; margin: 0 auto; padding: 16px; min-height: 100vh; display: flex; flex-direction: column; }
+  .cam-box { width: 100%; aspect-ratio: 4/3; border-radius: 20px; overflow: hidden; background: #000; position: relative; border: 2px solid #3b82f6; transition: border-color 0.3s; }
+  .cam-box video { width: 100%; height: 100%; object-fit: cover; display: block; transform: scaleX(-1); }
+  .cam-box canvas { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; transform: scaleX(-1); }
+  .cam-box .overlay-text { position: absolute; bottom: 12px; left: 50%; transform: translateX(-50%); background: rgba(0,0,0,0.75); padding: 6px 16px; border-radius: 20px; font-size: 13px; white-space: nowrap; z-index: 2; }
+  .pin-section { margin-top: 16px; display: flex; gap: 8px; }
+  .pin-section input { flex: 1; background: #1e293b; border: 2px solid #334155; color: white; font-size: 28px; text-align: center; letter-spacing: 12px; padding: 12px; border-radius: 12px; outline: none; font-weight: 700; font-family: monospace; transition: border-color 0.2s, box-shadow 0.2s; }
+  .pin-section input:focus { border-color: #3b82f6; box-shadow: 0 0 0 3px rgba(59,130,246,0.2); }
+  .pin-section input::placeholder { color: #475569; font-size: 18px; letter-spacing: 4px; }
+  .btn-kiosk { padding: 12px 24px; border-radius: 12px; font-size: 16px; font-weight: 600; cursor: pointer; border: none; transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1); }
+  .btn-kiosk:active { transform: scale(0.97); }
+  .btn-kiosk:disabled { opacity:0.4; cursor:default; transform:none; }
+  .btn-primary-kiosk { background: #3b82f6; color: white; }
+  .btn-primary-kiosk:hover:not(:disabled) { background: #2563eb; box-shadow: 0 4px 12px rgba(59,130,246,0.3); }
+  .btn-secondary-kiosk { background: #1e293b; color: #94a3b8; border: 1px solid #334155; }
+  .btn-secondary-kiosk:hover:not(:disabled) { background: #334155; color: white; }
+  .btn-green-kiosk { background: #16a34a; color: white; }
+  .btn-green-kiosk:hover:not(:disabled) { background: #15803d; box-shadow: 0 4px 12px rgba(22,163,74,0.3); }
+  .status-bar { display: flex; align-items: center; gap: 8px; padding: 8px 0; font-size: 13px; color: #94a3b8; }
+  .dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; flex-shrink:0; }
+  .dot-green { background: #22c55e; }
+  .dot-yellow { background: #eab308; }
+  .dot-red { background: #ef4444; }
+  .confirm-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.85); display: flex; align-items: center; justify-content: center; z-index: 200; }
+  .confirm-card { background: #1e293b; border-radius: 24px; padding: 32px; text-align: center; max-width: 360px; width: 90%; border: 1px solid #334155; }
+  .confirm-avatar { width: 72px; height: 72px; border-radius: 50%; background: linear-gradient(135deg, #3b82f6, #7c3aed); display: flex; align-items: center; justify-content: center; font-size: 32px; font-weight: 700; margin: 0 auto 12px; color: white; box-shadow: 0 4px 16px rgba(59,130,246,0.3); }
+  .job-card { background: #1e293b; border-radius: 16px; padding: 20px; margin-top: 12px; border: 1px solid #334155; text-align:left; }
+  .job-card .label { color: #64748b; font-size: 12px; font-weight: 500; text-transform: uppercase; letter-spacing: 0.05em; }
+  .job-card .value { color: white; font-size: 16px; font-weight: 600; word-break:break-all; }
+  .pin-display { font-size: 48px; font-weight: 900; letter-spacing: 16px; color: #3b82f6; font-family: monospace; }
+  .hidden { display: none !important; }
+  .bottom-links { margin-top: auto; padding: 16px 0; text-align: center; font-size: 13px; color: #475569; }
+  .bottom-links a { color: #3b82f6; text-decoration: none; transition: color 0.2s; }
+  .bottom-links a:hover { color: #60a5fa; }
+  .kiosk-divider { border: none; border-top: 1px solid #1e293b; margin: 12px 0; }
+  .action-row { display:flex; gap:8px; margin-top:10px; }
+  .action-row button { flex:1; }
+  .pulse-ring { animation: pulseRing 1.5s infinite; }
+  @keyframes pulseRing { 0% { box-shadow: 0 0 0 0 rgba(59,130,246,0.4); } 70% { box-shadow: 0 0 0 16px rgba(59,130,246,0); } 100% { box-shadow: 0 0 0 0 rgba(59,130,246,0); } }
+</style>
+</head>
+<body>
+
+<div id="kioskApp" class="kiosk">
+  <div class="cam-box pulse-ring" id="camBox">
+    <video id="kioskCam" autoplay muted playsinline></video>
+    <canvas id="kioskCanvas"></canvas>
+    <div class="overlay-text" id="camStatus"><span class="dot dot-yellow"></span> Starting...</div>
+  </div>
+
+  <div class="status-bar">
+    <span class="dot dot-yellow" id="faceDot"></span>
+    <span id="faceStatusText">Initializing face detection...</span>
+  </div>
+
+  <hr class="kiosk-divider">
+
+  <p style="font-size:13px; color:#6b7280; text-align:center; margin:0;">Enter OTP PIN from website upload</p>
+  <div class="pin-section">
+    <input type="text" id="pinInput" placeholder="000000" maxlength="6" inputmode="numeric">
+    <button class="btn-kiosk btn-primary-kiosk" onclick="lookupPin()">Go</button>
+  </div>
+  <p id="pinFeedback" style="font-size:13px; color:#ef4444; margin-top:4px; display:none;"></p>
+
+  <div class="bottom-links">Face recognition for kiosk auto-login</div>
+</div>
+
+<div id="confirmOverlay" class="confirm-overlay hidden">
+  <div class="confirm-card">
+    <div class="confirm-avatar" id="confirmAvatar"></div>
+    <p style="color:#9ca3af; margin-bottom:4px; font-size:14px;">Is this you?</p>
+    <p id="confirmName" style="font-size:22px; font-weight:700; margin:4px 0;"></p>
+    <p id="confirmCoins" style="font-size:14px; color:#6b7280; margin-bottom:16px;"></p>
+    <div style="display:flex; gap:8px;">
+      <button class="btn-kiosk btn-secondary-kiosk" style="flex:1;" onclick="rejectFace()">No</button>
+      <button class="btn-kiosk btn-primary-kiosk" style="flex:1;" onclick="acceptFace()">Yes, that's me</button>
+    </div>
+  </div>
+</div>
+
+<div id="jobsOverlay" class="confirm-overlay hidden">
+  <div class="confirm-card" style="text-align:left; max-height:80vh; overflow-y:auto;">
+    <p style="color:#9ca3af; margin-bottom:4px; font-size:14px;">Welcome back,</p>
+    <p id="jobsUserName" style="font-size:20px; font-weight:700; margin-bottom:4px;"></p>
+    <p style="color:#6b7280; font-size:13px; margin-bottom:16px;">Select a print job to proceed</p>
+    <div id="jobsList" style="display:flex; flex-direction:column; gap:10px;"></div>
+    <div id="jobsEmpty" style="display:none; text-align:center; padding:24px; color:#6b7280;">
+      <p style="font-size:14px; font-weight:600;">No pending jobs</p>
+      <p style="font-size:13px; margin-top:4px;">Upload files from your phone first</p>
+    </div>
+    <button class="btn-kiosk btn-secondary-kiosk" style="width:100%; margin-top:16px;" onclick="location.reload()">Back</button>
+  </div>
+</div>
+
+<div id="pinJobOverlay" class="confirm-overlay hidden">
+  <div class="confirm-card" style="text-align:left;">
+    <div class="job-card">
+      <div style="display:flex; justify-content:space-between;"><span class="label">Job</span><span class="value" id="pinJobId">-</span></div>
+      <div style="display:flex; justify-content:space-between; margin-top:8px;"><span class="label">File</span><span class="value" id="pinFileName">-</span></div>
+      <div style="display:flex; justify-content:space-between; margin-top:8px;"><span class="label">Pages</span><span class="value" id="pinPages">-</span></div>
+      <div style="display:flex; justify-content:space-between; margin-top:8px;"><span class="label">Amount</span><span class="value" id="pinAmount">-</span></div>
+    </div>
+    <button class="btn-kiosk btn-primary-kiosk" style="width:100%; margin-top:16px;" onclick="proceedPinPayment()">Proceed to Payment</button>
+    <button class="btn-kiosk btn-secondary-kiosk" style="width:100%; margin-top:8px;" onclick="closePinJob()">Cancel</button>
+  </div>
+</div>
+
+<div id="paymentOverlay" class="confirm-overlay hidden">
+  <div class="confirm-card">
+    <p style="color:#94a3b8; margin-bottom:4px; font-size:14px;">Scan to pay</p>
+    <p style="font-size:28px; font-weight:700; margin-bottom:8px;" id="payAmount">RM 0.00</p>
+    <img src="../maybank_qr.jpeg" alt="QR" style="width:180px; border-radius:12px; margin:12px 0; border:1px solid #374151;">
+    <button class="btn-kiosk btn-primary-kiosk" style="width:100%;" onclick="confirmPayment()" id="payBtn">Confirm Payment</button>
+    <p id="paySuccess" style="display:none; margin-top:12px; font-size:16px; color:#22c55e; font-weight:600;">Payment Successful</p>
+    <button class="btn-kiosk btn-secondary-kiosk" style="width:100%; margin-top:8px;" onclick="closePayment()">Close</button>
+  </div>
+</div>
+
+<div id="receiptOverlay" class="confirm-overlay hidden">
+  <div class="confirm-card" style="max-width:400px; padding:28px;">
+    <div style="width:56px; height:56px; border-radius:50%; background:linear-gradient(135deg, #16a34a, #22c55e); display:flex; align-items:center; justify-content:center; margin:0 auto 16px; box-shadow:0 4px 16px rgba(22,163,74,0.3);">
+      <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+    </div>
+    <h3 style="font-size:20px; font-weight:700; text-align:center; margin-bottom:4px;">Payment Confirmed</h3>
+    <p style="color:#94a3b8; font-size:13px; text-align:center; margin-bottom:20px;">Your print job is being processed</p>
+    <div style="background:#0f172a; border-radius:12px; padding:16px; margin-bottom:16px;">
+      <div style="display:flex; justify-content:space-between; padding:6px 0;"><span style="color:#64748b; font-size:13px;">Job ID</span><span style="font-size:13px; font-weight:600;" id="receiptJobId">-</span></div>
+      <div style="display:flex; justify-content:space-between; padding:6px 0;"><span style="color:#64748b; font-size:13px;">File</span><span style="font-size:13px; font-weight:600; text-align:right; max-width:200px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;" id="receiptFile">-</span></div>
+      <div style="display:flex; justify-content:space-between; padding:6px 0;"><span style="color:#64748b; font-size:13px;">Pages</span><span style="font-size:13px; font-weight:600;" id="receiptPages">-</span></div>
+      <div style="display:flex; justify-content:space-between; padding:6px 0;"><span style="color:#64748b; font-size:13px;">Color</span><span style="font-size:13px; font-weight:600;" id="receiptColor">-</span></div>
+      <div style="display:flex; justify-content:space-between; padding:6px 0;"><span style="color:#64748b; font-size:13px;">Copies</span><span style="font-size:13px; font-weight:600;" id="receiptCopies">-</span></div>
+      <div style="display:flex; justify-content:space-between; padding:6px 0; border-top:1px solid #1e293b; margin-top:4px; padding-top:10px;"><span style="color:#94a3b8; font-size:14px; font-weight:600;">Total Paid</span><span style="font-size:18px; font-weight:700; color:#22c55e;" id="receiptTotal">RM 0.00</span></div>
+    </div>
+    <div style="background:rgba(59,130,246,0.1); border-radius:10px; padding:10px 14px; text-align:center; margin-bottom:16px;" id="receiptCoinsRow">
+      <span style="font-size:13px; color:#60a5fa;">You earned <strong id="receiptCoins">0</strong> coins</span>
+    </div>
+    <button class="btn-kiosk btn-primary-kiosk" style="width:100%;" onclick="closeReceipt()">Done</button>
+  </div>
+</div>
+
+<script defer src="https://cdn.jsdelivr.net/npm/face-api.js@0.22.2/dist/face-api.min.js"></script>
+<script>
+const SUPABASE_URL = CONFIG.SUPABASE_URL;
+const SUPABASE_KEY = CONFIG.SUPABASE_KEY;
+
+let faceStream = null;
+let matchedUser = null;
+let currentPinJob = null;
+let currentPinJobId = null;
+let modelsLoaded = false;
+let animFrameId = null;
+
+window.addEventListener('load', async () => {
+  async function loadModels(url) {
+    await faceapi.nets.ssdMobilenetv1.loadFromUri(url);
+    await faceapi.nets.faceLandmark68Net.loadFromUri(url);
+    await faceapi.nets.faceRecognitionNet.loadFromUri(url);
+  }
+  const modelUrls = ['https://cdn.jsdelivr.net/npm/@vladmandic/face-api@1.7.15/model', '../models'];
+  let loaded = false;
+  for (const url of modelUrls) {
+    try { await loadModels(url); loaded = true; break; } catch(e) {}
+  }
+  if (!loaded) {
+    document.getElementById('camStatus').innerHTML = '<span class="dot dot-yellow"></span> Face AI offline';
+    document.getElementById('faceStatusText').textContent = 'Face recognition unavailable';
+    return;
+  }
+  modelsLoaded = true;
+
+  try {
+    faceStream = await navigator.mediaDevices.getUserMedia({ video: { width: 640, height: 480, facingMode: 'user' } });
+    const video = document.getElementById('kioskCam');
+    video.srcObject = faceStream;
+    await video.play();
+    const canvas = document.getElementById('kioskCanvas');
+    canvas.width = video.videoWidth || 640;
+    canvas.height = video.videoHeight || 480;
+    document.getElementById('camStatus').innerHTML = '<span class="dot dot-green"></span> Face AI active';
+    document.getElementById('faceStatusText').textContent = 'Looking for face...';
+    startFaceDetection();
+  } catch(e) {
+    document.getElementById('camStatus').innerHTML = '<span class="dot dot-yellow"></span> Camera blocked';
+    document.getElementById('faceStatusText').textContent = 'Camera access denied';
+  }
+
+  document.getElementById('pinInput').addEventListener('input', function() {
+    this.value = this.value.replace(/\D/g, '').slice(0, 6);
+    if (this.value.length === 6) lookupPin();
+  });
+});
+
+async function startFaceDetection() {
+  const video = document.getElementById('kioskCam');
+  const canvas = document.getElementById('kioskCanvas');
+  const ctx = canvas.getContext('2d');
+
+  let labeledDescriptors = [];
+  try {
+    const r = await fetch(API('data', 'get-users-with-face'));
+    const d = await r.json();
+    const users = d.data || [];
+    for (const u of users) {
+      if (u.face_descriptor && Array.isArray(u.face_descriptor) && u.face_descriptor.length === 128) {
+        labeledDescriptors.push(new faceapi.LabeledFaceDescriptors(u.id, [new Float32Array(u.face_descriptor)]));
+      }
+    }
+  } catch(e) {}
+
+  let matcher = labeledDescriptors.length > 0 ? new faceapi.FaceMatcher(labeledDescriptors, 0.6) : null;
+  let matchCooldown = false;
+
+  async function detect() {
+    if (!modelsLoaded || !video.videoWidth) { animFrameId = requestAnimationFrame(detect); return; }
+
+    try {
+      const det = await faceapi.detectSingleFace(video).withFaceLandmarks().withFaceDescriptor();
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+      if (det) {
+        const box = det.detection.box;
+        const w = canvas.width / video.videoWidth;
+        const h = canvas.height / video.videoHeight;
+
+        ctx.strokeStyle = '#22c55e';
+        ctx.lineWidth = 4;
+        const cLen = 12;
+        ctx.beginPath();
+        ctx.moveTo(box.x * w, box.y * h + cLen);
+        ctx.lineTo(box.x * w, box.y * h);
+        ctx.lineTo(box.x * w + cLen, box.y * h);
+        ctx.moveTo((box.x + box.width) * w - cLen, box.y * h);
+        ctx.lineTo((box.x + box.width) * w, box.y * h);
+        ctx.lineTo((box.x + box.width) * w, box.y * h + cLen);
+        ctx.moveTo((box.x + box.width) * w, (box.y + box.height) * h - cLen);
+        ctx.lineTo((box.x + box.width) * w, (box.y + box.height) * h);
+        ctx.lineTo((box.x + box.width) * w - cLen, (box.y + box.height) * h);
+        ctx.moveTo(box.x * w + cLen, (box.y + box.height) * h);
+        ctx.lineTo(box.x * w, (box.y + box.height) * h);
+        ctx.lineTo(box.x * w, (box.y + box.height) * h - cLen);
+        ctx.stroke();
+
+        document.getElementById('faceDot').className = 'dot dot-green';
+
+        if (matcher && !matchCooldown) {
+          const match = matcher.findBestMatch(det.descriptor);
+          if (match.label !== 'unknown' && match.distance < 0.6) {
+            matchCooldown = true;
+            document.getElementById('faceStatusText').textContent = 'Face matched!';
+            const r = await fetch(API('data', 'get-user&id=' + match.label));
+            const d = await r.json();
+            if (d.success && d.data) {
+              matchedUser = d.data;
+              stopCamera();
+              document.getElementById('confirmAvatar').textContent = matchedUser.name.charAt(0).toUpperCase();
+              document.getElementById('confirmName').textContent = matchedUser.name;
+              document.getElementById('confirmCoins').textContent = matchedUser.coins + ' coins';
+              document.getElementById('confirmOverlay').classList.remove('hidden');
+            }
+            animFrameId = requestAnimationFrame(detect);
+            return;
+          }
+          document.getElementById('faceStatusText').textContent = 'Scanning for registered face...';
+        } else {
+          document.getElementById('faceStatusText').textContent = matcher ? 'Scanning...' : 'Face detected (no registered users)';
+        }
+      } else {
+        document.getElementById('faceDot').className = 'dot dot-yellow';
+        document.getElementById('faceStatusText').textContent = 'Look at the camera';
+      }
+    } catch(e) {}
+    animFrameId = requestAnimationFrame(detect);
+  }
+  detect();
+}
+
+function acceptFace() {
+  document.getElementById('confirmOverlay').classList.add('hidden');
+  if (!matchedUser) return;
+  fetch(API('auth', 'face-login'), {
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ user_id: matchedUser.id })
+  }).then(r => r.json()).then(data => {
+    if (data.success) {
+      localStorage.setItem('session_token', data.session_token);
+      localStorage.setItem('user', JSON.stringify(data.user));
+      showUserJobs(matchedUser);
+    } else { window.location.href = '../website/login.html'; }
+  }).catch(() => { window.location.href = '../website/login.html'; });
+}
+
+function showUserJobs(userData) {
+  document.getElementById('jobsUserName').textContent = userData.name;
+  var list = document.getElementById('jobsList');
+  var empty = document.getElementById('jobsEmpty');
+  list.innerHTML = '<p style="text-align:center; color:#6b7280; padding:16px;">Loading jobs...</p>';
+  empty.style.display = 'none';
+  document.getElementById('jobsOverlay').classList.remove('hidden');
+
+  fetch(API('data', 'get-jobs&user_id=' + userData.id))
+    .then(function(r) { return r.json(); })
+    .then(function(d) {
+      var jobs = d.data || [];
+      if (!jobs.length) {
+        list.innerHTML = '';
+        empty.style.display = 'block';
+        return;
+      }
+      list.innerHTML = jobs.map(function(j) {
+        var isPaid = j.paid;
+        var colorLabel = j.color_mode === 'color' ? 'Color' : j.color_mode === 'mixed' ? 'Mixed' : 'B&W';
+        var statusBadge = isPaid
+          ? '<span style="background:#166534; color:white; padding:2px 8px; border-radius:10px; font-size:11px; font-weight:600;">Paid</span>'
+          : '<span style="background:#92400e; color:white; padding:2px 8px; border-radius:10px; font-size:11px; font-weight:600;">Unpaid</span>';
+        return '<div class="job-card" style="cursor:pointer; padding:14px; background:#1e293b; border-radius:12px; border:1px solid #334155; transition:border-color 0.2s;" onmouseover="this.style.borderColor=\'#3b82f6\'" onmouseout="this.style.borderColor=\'#334155\'" onclick="selectJob(\'' + j.job_id + '\')">' +
+          '<div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">' +
+            '<span style="font-weight:700; font-size:14px; color:#f1f5f9; max-width:60%; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">' + (j.file_name || 'File') + '</span>' +
+            statusBadge +
+          '</div>' +
+          '<div style="display:flex; gap:12px; font-size:12px; color:#94a3b8;">' +
+            '<span>' + (j.pages || 1) + ' pages</span>' +
+            '<span>' + colorLabel + '</span>' +
+            '<span>x' + (j.copies || 1) + '</span>' +
+          '</div>' +
+          '<div style="margin-top:8px; font-size:16px; font-weight:700; color:#3b82f6;">RM ' + parseFloat(j.total_price || 0).toFixed(2) + '</div>' +
+        '</div>';
+      }).join('');
+    })
+    .catch(function() {
+      list.innerHTML = '';
+      empty.style.display = 'block';
+    });
+}
+
+function selectJob(jobId) {
+  document.getElementById('jobsOverlay').classList.add('hidden');
+  fetch(API('data', 'get-jobs&user_id=' + matchedUser.id))
+    .then(function(r) { return r.json(); })
+    .then(function(d) {
+      var jobs = d.data || [];
+      var job = jobs.find(function(j) { return j.job_id === jobId; });
+      if (!job) return;
+      currentPinJob = job;
+      currentPinJobId = job.job_id;
+      document.getElementById('pinJobId').textContent = job.job_id;
+      document.getElementById('pinFileName').textContent = job.file_name;
+      document.getElementById('pinPages').textContent = job.pages + 'p ' + job.color_mode;
+      document.getElementById('pinAmount').textContent = 'RM ' + parseFloat(job.total_price).toFixed(2);
+      if (job.paid) {
+        document.getElementById('receiptJobId').textContent = job.job_id;
+        document.getElementById('receiptFile').textContent = job.file_name;
+        document.getElementById('receiptPages').textContent = job.pages + ' pages';
+        document.getElementById('receiptColor').textContent = job.color_mode === 'color' ? 'Color' : 'B&W';
+        document.getElementById('receiptCopies').textContent = 'x' + (job.copies || 1);
+        document.getElementById('receiptTotal').textContent = 'RM ' + parseFloat(job.total_price).toFixed(2);
+        document.getElementById('receiptCoinsRow').style.display = 'none';
+        document.getElementById('receiptOverlay').classList.remove('hidden');
+      } else {
+        document.getElementById('payAmount').textContent = 'RM ' + parseFloat(job.total_price).toFixed(2);
+        document.getElementById('paymentOverlay').classList.remove('hidden');
+      }
+    });
+}
+
+function closeJobsOverlay() {
+  document.getElementById('jobsOverlay').classList.add('hidden');
+  matchedUser = null;
+  document.getElementById('faceStatusText').textContent = 'Restarting...';
+  startFaceDetection();
+}
+
+function rejectFace() {
+  document.getElementById('confirmOverlay').classList.add('hidden');
+  matchedUser = null;
+  location.reload();
+}
+
+function stopCamera() {
+  if (animFrameId) cancelAnimationFrame(animFrameId);
+  if (faceStream) faceStream.getTracks().forEach(t => t.stop());
+}
+
+async function lookupPin() {
+  const pin = document.getElementById('pinInput').value;
+  const fb = document.getElementById('pinFeedback');
+  fb.style.display = 'none';
+  if (pin.length !== 6) return;
+  try {
+    const r = await fetch(API('upload', 'lookup-pin&pin=' + pin));
+    const d = await r.json();
+    if (d.success && d.job) {
+      currentPinJob = d.job;
+      currentPinJobId = d.job.job_id;
+      if (d.job.paid) {
+        document.getElementById('receiptJobId').textContent = d.job.job_id;
+        document.getElementById('receiptFile').textContent = d.job.file_name;
+        document.getElementById('receiptPages').textContent = d.job.pages + ' pages';
+        document.getElementById('receiptColor').textContent = d.job.color_mode === 'color' ? 'Color' : 'B&W';
+        document.getElementById('receiptCopies').textContent = 'x' + (d.job.copies || 1);
+        document.getElementById('receiptTotal').textContent = 'RM ' + parseFloat(d.job.total_price).toFixed(2);
+        document.getElementById('receiptCoinsRow').style.display = 'none';
+        document.getElementById('receiptOverlay').classList.remove('hidden');
+      } else {
+        document.getElementById('pinJobId').textContent = d.job.job_id;
+        document.getElementById('pinFileName').textContent = d.job.file_name;
+        document.getElementById('pinPages').textContent = d.job.pages + 'p ' + d.job.color_mode + ' ' + d.job.paper_size;
+        document.getElementById('pinAmount').textContent = 'RM ' + parseFloat(d.job.total_price).toFixed(2);
+        document.getElementById('pinJobOverlay').classList.remove('hidden');
+      }
+      document.getElementById('pinInput').value = '';
+    } else {
+      fb.textContent = d.error || 'No job found with this PIN';
+      fb.style.display = 'block';
+      document.getElementById('pinInput').value = '';
+    }
+  } catch(e) {
+    fb.textContent = 'Connection error';
+    fb.style.display = 'block';
+  }
+}
+
+function closePinJob() { document.getElementById('pinJobOverlay').classList.add('hidden'); currentPinJob = null; }
+
+function proceedPinPayment() {
+  document.getElementById('pinJobOverlay').classList.add('hidden');
+  document.getElementById('payAmount').textContent = document.getElementById('pinAmount').textContent;
+  document.getElementById('paymentOverlay').classList.remove('hidden');
+}
+
+async function confirmPayment() {
+  if (!currentPinJobId) return;
+  const btn = document.getElementById('payBtn');
+  btn.disabled = true; btn.textContent = 'Processing...';
+  try {
+    const r = await fetch(API('payment', 'confirm'), {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ job_id: currentPinJobId })
+    });
+    const d = await r.json();
+    if (d.success) {
+      document.getElementById('paymentOverlay').classList.add('hidden');
+      const job = currentPinJob;
+      document.getElementById('receiptJobId').textContent = currentPinJobId;
+      document.getElementById('receiptFile').textContent = job ? job.file_name : '-';
+      document.getElementById('receiptPages').textContent = job ? job.pages + ' pages' : '-';
+      document.getElementById('receiptColor').textContent = job ? (job.color_mode === 'color' ? 'Color' : 'B&W') : '-';
+      document.getElementById('receiptCopies').textContent = job ? 'x' + (job.copies || 1) : '-';
+      document.getElementById('receiptTotal').textContent = 'RM ' + (job ? parseFloat(job.total_price).toFixed(2) : '0.00');
+      const isLoggedIn = !!localStorage.getItem('session_token');
+      if (isLoggedIn && d.coins_earned > 0) {
+        document.getElementById('receiptCoinsRow').style.display = 'block';
+        document.getElementById('receiptCoins').textContent = d.coins_earned;
+      } else {
+        document.getElementById('receiptCoinsRow').style.display = 'none';
+      }
+      document.getElementById('receiptOverlay').classList.remove('hidden');
+      btn.disabled = false; btn.textContent = 'Confirm Payment'; btn.style.display = '';
+      document.getElementById('paySuccess').style.display = 'none';
+    } else { alert(d.error); btn.disabled = false; btn.textContent = 'Confirm Payment'; }
+  } catch(e) { alert('Payment failed'); btn.disabled = false; btn.textContent = 'Confirm Payment'; }
+}
+
+function closeReceipt() {
+  document.getElementById('receiptOverlay').classList.add('hidden');
+  if (currentPinJobId) {
+    fetch(API('data', 'complete-job'), {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ job_id: currentPinJobId })
+    }).finally(function() { location.reload(); });
+  } else {
+    location.reload();
+  }
+}
+
+function closePayment() {
+  location.reload();
+}
+</script>
+</body>
+</html>

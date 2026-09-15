@@ -1,0 +1,459 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>PrintKiosk - Admin</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../styles.css">
+<script src="../frontend_config.js"></script>
+<script src="../website/pstore.js"></script>
+</head>
+<body>
+<div class="nav">
+  <div class="nav-inner">
+    <div class="nav-left">
+      <button class="sidebar-toggle btn-icon btn-secondary" onclick="toggleSidebar()" style="margin-right:4px;">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+      </button>
+      <span class="logo"><span class="logo-mark"><svg viewBox="0 0 512 512" fill="none" xmlns="http://www.w3.org/2000/svg"><defs><linearGradient id="abg" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="#4C7CFF"/><stop offset="100%" stop-color="#1C2740"/></linearGradient><linearGradient id="afold" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="#E4EBFA"/><stop offset="100%" stop-color="#C7D4EE"/></linearGradient></defs><rect width="512" height="512" rx="112" fill="url(#abg)"/><g transform="rotate(-7 256 256)"><rect x="149" y="352" width="214" height="32" rx="16" fill="#22C7B8"/><path d="M179 136L305 136L351 182L351 358Q351 376 333 376L179 376Q161 376 161 358L161 154Q161 136 179 136Z" fill="#FFF"/><path d="M305 136L351 182L305 182Z" fill="url(#afold)"/></g></svg></span>PrintKiosk</span>
+      <span class="nav-title">Admin Dashboard</span>
+    </div>
+    <div class="nav-right">
+      <span class="nav-user" id="navUser"></span>
+      <button class="nav-btn" onclick="logout()">Logout</button>
+    </div>
+  </div>
+</div>
+
+<div class="sidebar-overlay" id="sidebarOverlay" onclick="toggleSidebar()"></div>
+
+<div class="sidebar-layout">
+  <div class="sidebar" id="sidebar">
+    <div class="sidebar-item active" onclick="showSection('overview', this)">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
+      Overview
+    </div>
+    <div class="sidebar-item" onclick="showSection('transactions', this)">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+      Transactions
+    </div>
+    <div class="sidebar-item" onclick="showSection('printer', this)">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>
+      Printer
+    </div>
+    <div class="sidebar-item" onclick="showSection('alerts', this)">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+      Alerts <span id="alertCount" class="badge badge-danger" style="font-size:11px; margin-left:4px;"></span>
+    </div>
+    <div class="sidebar-item" onclick="showSection('coins', this)">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 6v12"/><path d="M15.5 9.5c0-1.38-1.57-2.5-3.5-2.5S8.5 8.12 8.5 9.5 10.07 12 12 12s3.5 1.12 3.5 2.5-1.57 2.5-3.5 2.5-3.5-1.12-3.5-2.5"/></svg>
+      Coin Transactions
+    </div>
+    <div class="sidebar-item" onclick="showSection('users', this)">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+      Users
+    </div>
+  </div>
+  <div class="main-content">
+    <!-- Overview -->
+    <div id="section-overview">
+      <div class="grid-4" id="statsGrid">
+        <div class="stat-card animate-fade-in"><div class="stat-value" id="statTodayJobs">0</div><div class="stat-label">Today's Prints</div></div>
+        <div class="stat-card animate-fade-in"><div class="stat-value" id="statTodayRevenue">RM 0</div><div class="stat-label">Today's Revenue</div></div>
+        <div class="stat-card animate-fade-in"><div class="stat-value" id="statPendingJobs">0</div><div class="stat-label">Pending Jobs</div></div>
+        <div class="stat-card animate-fade-in"><div class="stat-value" id="statCustomers">0</div><div class="stat-label">Total Customers</div></div>
+      </div>
+
+      <div class="card animate-fade-in" style="margin-top:20px;">
+        <div class="card-header"><span class="card-title">Printer Status</span></div>
+        <div id="printerOverview" class="grid-2">
+          <div>
+            <p class="text-sm" style="margin-bottom:12px;">Status: <span id="printerStatusBadge" class="badge badge-success">Online</span></p>
+            <div style="margin-bottom:12px;">
+              <div class="flex-between" style="margin-bottom:4px;"><span class="text-xs text-muted">Paper Level</span><span class="text-xs" id="paperLevelText">100%</span></div>
+              <div class="progress-bar"><div class="progress-fill" id="paperLevelBar" style="width:100%"></div></div>
+            </div>
+          </div>
+          <div>
+            <p class="text-sm" style="font-weight:500; margin-bottom:8px;">Toner Levels</p>
+            <div style="display:grid; gap:8px;">
+              <div><div class="flex-between" style="margin-bottom:2px;"><span class="text-xs">Black</span><span class="text-xs text-muted" id="tonerBlackText">100%</span></div><div class="progress-bar" style="height:6px;"><div class="progress-fill progress-blue" id="tonerBlackBar" style="width:100%"></div></div></div>
+              <div><div class="flex-between" style="margin-bottom:2px;"><span class="text-xs">Cyan</span><span class="text-xs text-muted" id="tonerCyanText">100%</span></div><div class="progress-bar" style="height:6px;"><div class="progress-fill progress-blue" id="tonerCyanBar" style="width:100%"></div></div></div>
+              <div><div class="flex-between" style="margin-bottom:2px;"><span class="text-xs">Magenta</span><span class="text-xs text-muted" id="tonerMagentaText">100%</span></div><div class="progress-bar" style="height:6px;"><div class="progress-fill progress-blue" id="tonerMagentaBar" style="width:100%"></div></div></div>
+              <div><div class="flex-between" style="margin-bottom:2px;"><span class="text-xs">Yellow</span><span class="text-xs text-muted" id="tonerYellowText">100%</span></div><div class="progress-bar" style="height:6px;"><div class="progress-fill progress-blue" id="tonerYellowBar" style="width:100%"></div></div></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Transactions -->
+    <div id="section-transactions" style="display:none;">
+      <div class="card animate-fade-in">
+        <div class="card-header" style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;">
+          <span class="card-title">Transactions</span>
+          <input type="date" id="txDate" class="input" style="width:auto;padding:6px 10px;font-size:13px;" onchange="loadTransactions()">
+          <button class="btn btn-secondary btn-sm" onclick="document.getElementById('txDate').value=todayStr();loadTransactions();">Today</button>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Job ID</th><th>Customer</th><th>File</th><th>Pages</th><th>Amount</th><th>Status</th><th>Paid</th><th>Date</th></tr></thead>
+            <tbody id="transactionsBody"><tr><td colspan="8" style="text-align:center;color:var(--gray-400);padding:24px;">Loading...</td></tr></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- Printer -->
+    <div id="section-printer" style="display:none;">
+      <div class="grid-2">
+        <div class="card animate-fade-in">
+          <div class="card-header"><span class="card-title">Simulate Paper Jam</span></div>
+          <div style="display:flex; gap:8px;">
+            <button class="btn btn-sm" onclick="simulateJam('minor')" style="background:var(--warning); color:white;">Jam (Minor)</button>
+            <button class="btn btn-danger btn-sm" onclick="simulateJam('major')">Jam (Major)</button>
+            <button class="btn btn-secondary btn-sm" onclick="clearJam()">Clear Jam</button>
+          </div>
+          <p class="text-xs text-muted" style="margin-top:12px;">Minor jam = auto reprint. Major jam = refund all printing jobs.</p>
+        </div>
+        <div class="card animate-fade-in">
+          <div class="card-header"><span class="card-title">Set Supply Levels</span></div>
+          <div class="grid-2">
+            <div class="form-group"><label>Paper %</label><input type="number" id="setPaper" class="input" value="100" min="0" max="100"></div>
+            <div class="form-group"><label>Toner Black %</label><input type="number" id="setTonerB" class="input" value="100" min="0" max="100"></div>
+            <div class="form-group"><label>Toner Cyan %</label><input type="number" id="setTonerC" class="input" value="100" min="0" max="100"></div>
+            <div class="form-group"><label>Toner Magenta %</label><input type="number" id="setTonerM" class="input" value="100" min="0" max="100"></div>
+            <div class="form-group"><label>Toner Yellow %</label><input type="number" id="setTonerY" class="input" value="100" min="0" max="100"></div>
+          </div>
+          <button class="btn btn-primary" onclick="setSupplyLevels()">Update Levels</button>
+        </div>
+      </div>
+      <div class="card animate-fade-in" style="margin-top:20px;">
+        <div class="card-header"><span class="card-title">Ready to Print Jobs</span></div>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Job ID</th><th>File</th><th>Pages</th><th>Amount</th><th>Action</th></tr></thead>
+            <tbody id="readyJobsBody"><tr><td colspan="5" style="text-align:center;color:var(--gray-400);padding:24px;">Loading...</td></tr></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- Alerts -->
+    <div id="section-alerts" style="display:none;">
+      <div class="card animate-fade-in">
+        <div class="card-header" style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;">
+          <span class="card-title">Live Alerts</span>
+          <input type="date" id="alertDate" class="input" style="width:auto;padding:6px 10px;font-size:13px;" onchange="loadAlerts()">
+          <button class="btn btn-secondary btn-sm" onclick="document.getElementById('alertDate').value=todayStr();loadAlerts();">Today</button>
+          <button class="btn btn-secondary btn-sm" onclick="markAllAlertsRead()">Mark All Read</button>
+        </div>
+        <div id="alertsList"></div>
+      </div>
+    </div>
+
+    <!-- Coin Transactions -->
+    <div id="section-coins" style="display:none;">
+      <div class="card animate-fade-in">
+        <div class="card-header" style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;">
+          <span class="card-title">Coin Transactions</span>
+          <input type="date" id="coinDate" class="input" style="width:auto;padding:6px 10px;font-size:13px;" onchange="loadCoinTransactions()">
+          <button class="btn btn-secondary btn-sm" onclick="document.getElementById('coinDate').value=todayStr();loadCoinTransactions();">Today</button>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>User</th><th>Type</th><th>Amount</th><th>Description</th><th>Balance</th><th>Date</th></tr></thead>
+            <tbody id="coinTransactionsBody"><tr><td colspan="6" style="text-align:center;color:var(--gray-400);padding:24px;">Loading...</td></tr></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- Users -->
+    <div id="section-users" style="display:none;">
+      <div class="card animate-fade-in">
+        <div class="card-header"><span class="card-title">All Users</span></div>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Name</th><th>Email</th><th>Role</th><th>Coins</th><th>Joined</th></tr></thead>
+            <tbody id="usersBody"><tr><td colspan="5" style="text-align:center;color:var(--gray-400);padding:24px;">Loading...</td></tr></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+const SUPABASE_URL = CONFIG.SUPABASE_URL;
+const SUPABASE_KEY = CONFIG.SUPABASE_KEY;
+
+let token = null;
+let user = null;
+
+async function init() {
+  await PKS.init();
+  token = localStorage.getItem('session_token');
+  const userData = localStorage.getItem('user');
+  if (!token || !userData) { window.location.href = '../website/login.html'; return; }
+  try {
+    user = JSON.parse(userData);
+    if (user.role !== 'admin') { window.location.href = '../website/customer.html'; return; }
+    document.getElementById('navUser').textContent = user.name;
+    document.getElementById('txDate').value = todayStr();
+    document.getElementById('alertDate').value = todayStr();
+    document.getElementById('coinDate').value = todayStr();
+    loadAll();
+    setInterval(loadAll, 30000);
+  } catch(e) { window.location.href = '../website/login.html'; }
+}
+
+function logout() {
+  fetch(API('auth', 'logout'), { method: 'POST', headers: { 'X-Session-Token': token } })
+    .finally(() => { PKS.clear(); window.location.href = '../website/login.html'; });
+}
+
+function todayStr() {
+  return new Date().toISOString().slice(0, 10);
+}
+
+function toggleSidebar() {
+  const sb = document.getElementById('sidebar');
+  const ov = document.getElementById('sidebarOverlay');
+  sb.classList.toggle('open');
+  ov.classList.toggle('show');
+}
+
+function showSection(name, el) {
+  document.querySelectorAll('.sidebar-item').forEach(s => s.classList.remove('active'));
+  if (el) el.classList.add('active');
+  document.querySelectorAll('[id^="section-"]').forEach(s => s.style.display = 'none');
+  const section = document.getElementById('section-' + name);
+  if (section) section.style.display = 'block';
+  const sb = document.getElementById('sidebar');
+  const ov = document.getElementById('sidebarOverlay');
+  sb.classList.remove('open');
+  ov.classList.remove('show');
+  if (name === 'transactions') loadTransactions();
+  if (name === 'alerts') loadAlerts();
+  if (name === 'coins') loadCoinTransactions();
+  if (name === 'users') loadUsers();
+  if (name === 'printer') { loadReadyJobs(); }
+}
+
+function loadAll() {
+  fetch(API('admin', 'stats'), { headers: { 'X-Session-Token': token } })
+    .then(r => r.json()).then(data => {
+      if (data.success && data.stats) {
+        const s = data.stats;
+        document.getElementById('statTodayJobs').textContent = s.today_jobs ?? 0;
+        document.getElementById('statTodayRevenue').textContent = 'RM ' + Number(s.today_revenue || 0).toFixed(2);
+        document.getElementById('statPendingJobs').textContent = s.pending_jobs ?? 0;
+        document.getElementById('statCustomers').textContent = s.total_customers ?? 0;
+        if (data.printer) updatePrinterDisplay(data.printer);
+        document.getElementById('alertCount').textContent = s.unread_alerts || '';
+      }
+    }).catch(() => {});
+
+  fetch(API('admin', 'alerts&limit=5'), { headers: { 'X-Session-Token': token } })
+    .then(r => r.json()).then(data => {
+      if (data.success) {
+        const unread = data.alerts.filter(a => !a.is_read).length;
+        document.getElementById('alertCount').textContent = unread || '';
+      }
+    }).catch(() => {});
+}
+
+function updatePrinterDisplay(p) {
+  const badge = document.getElementById('printerStatusBadge');
+  badge.textContent = p.status.replace('_', ' ').toUpperCase();
+  badge.className = 'badge ' + (p.status === 'online' ? 'badge-success' : p.status === 'offline' ? 'badge-danger' : 'badge-warning');
+
+  document.getElementById('paperLevelText').textContent = p.paper_level + '%';
+  const paperFill = document.getElementById('paperLevelBar');
+  paperFill.style.width = p.paper_level + '%';
+  paperFill.className = 'progress-fill ' + (p.paper_level < 20 ? 'progress-red' : p.paper_level < 50 ? 'progress-yellow' : 'progress-green');
+
+  for (const color of ['black', 'cyan', 'magenta', 'yellow']) {
+    const val = p['toner_' + color];
+    document.getElementById('toner' + color.charAt(0).toUpperCase() + color.slice(1) + 'Text').textContent = val + '%';
+    const bar = document.getElementById('toner' + color.charAt(0).toUpperCase() + color.slice(1) + 'Bar');
+    bar.style.width = val + '%';
+    bar.className = 'progress-fill progress-blue';
+  }
+}
+
+function loadTransactions() {
+  const d = document.getElementById('txDate').value;
+  let action = 'transactions&limit=50';
+  if (d) action += '&date=' + d;
+  fetch(API('admin', action), { headers: { 'X-Session-Token': token } })
+    .then(r => r.json()).then(data => {
+      const tbody = document.getElementById('transactionsBody');
+      if (!data.success || !data.transactions.length) {
+        tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;color:var(--gray-400);padding:24px;">No transactions</td></tr>';
+        return;
+      }
+      tbody.innerHTML = data.transactions.map(t => {
+        const statusClass = statusCls(t.status);
+        return '<tr><td><strong>' + t.job_id + '</strong></td><td>' + t.customer_name + '</td><td>' + t.file_name + '</td><td>' + t.pages + '</td><td>RM ' + parseFloat(t.total_price).toFixed(2) + '</td><td><span class="badge ' + statusClass + '">' + t.status.replace(/_/g, ' ') + '</span></td><td><span class="badge ' + (t.paid ? 'badge-success' : 'badge-danger') + '">' + (t.paid ? 'Yes' : 'No') + '</span></td><td>' + new Date(t.created_at).toLocaleDateString() + '</td></tr>';
+      }).join('');
+    }).catch(() => {});
+}
+
+function loadAlerts() {
+  const d = document.getElementById('alertDate').value;
+  let action = 'alerts&limit=50';
+  if (d) action += '&date=' + d;
+  fetch(API('admin', action), { headers: { 'X-Session-Token': token } })
+    .then(r => r.json()).then(data => {
+      const list = document.getElementById('alertsList');
+      if (!data.success || !data.alerts.length) {
+        list.innerHTML = '<p style="text-align:center;color:var(--gray-400);padding:24px;">No alerts</p>';
+        return;
+      }
+      const unreadCount = data.alerts.filter(a => !a.is_read).length;
+      document.getElementById('alertCount').textContent = unreadCount || '';
+      list.innerHTML = data.alerts.map(a => '<div class="alert alert-' + (a.severity === 'critical' ? 'critical' : a.severity) + '" style="' + (a.is_read ? 'opacity:0.6;' : '') + '"><span style="flex:1;">' + a.message + '</span><span class="text-xs text-muted">' + new Date(a.created_at).toLocaleString() + '</span>' + (!a.is_read ? '<button class="btn btn-sm btn-secondary" onclick="markAlertRead(\'' + a.id + '\')">Read</button>' : '') + '</div>').join('');
+    }).catch(() => {});
+}
+
+function loadCoinTransactions() {
+  const d = document.getElementById('coinDate').value;
+  let action = 'coin-transactions&limit=50';
+  if (d) action += '&date=' + d;
+  fetch(API('admin', action), { headers: { 'X-Session-Token': token } })
+    .then(r => r.json()).then(data => {
+      const tbody = document.getElementById('coinTransactionsBody');
+      if (!data.success || !data.transactions.length) {
+        tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;color:var(--gray-400);padding:24px;">No transactions</td></tr>';
+        return;
+      }
+      tbody.innerHTML = data.transactions.map(t => {
+        const userName = t.users ? t.users.name : 'Deleted';
+        return '<tr><td>' + userName + '</td><td><span class="badge ' + (t.type === 'earned' ? 'badge-success' : t.type === 'spent' ? 'badge-warning' : 'badge-info') + '">' + t.type + '</span></td><td>' + t.amount + '</td><td>' + (t.description || '-') + '</td><td>' + t.balance_after + '</td><td>' + new Date(t.created_at).toLocaleDateString() + '</td></tr>';
+      }).join('');
+    }).catch(() => {});
+}
+
+function loadUsers() {
+  fetch(API('admin', 'all-users'), { headers: { 'X-Session-Token': token } })
+    .then(r => r.json()).then(data => {
+      const tbody = document.getElementById('usersBody');
+      if (!data.success || !data.users.length) {
+        tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;color:var(--gray-400);padding:24px;">No users</td></tr>';
+        return;
+      }
+      tbody.innerHTML = data.users.map(u => '<tr><td><strong>' + u.name + '</strong></td><td>' + u.email + '</td><td><span class="badge ' + (u.role === 'admin' ? 'badge-danger' : 'badge-info') + '">' + u.role + '</span></td><td>' + u.coins + '</td><td>' + new Date(u.created_at).toLocaleDateString() + '</td></tr>').join('');
+    }).catch(() => {});
+}
+
+function loadReadyJobs() {
+  fetch(API('printer', 'ready-jobs'), { headers: { 'X-Session-Token': token } })
+    .then(r => r.json()).then(data => {
+      const tbody = document.getElementById('readyJobsBody');
+      if (!data.success || !data.jobs.length) {
+        tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;color:var(--gray-400);padding:24px;">No ready jobs</td></tr>';
+        return;
+      }
+      tbody.innerHTML = data.jobs.map(j => '<tr><td><strong>' + j.job_id + '</strong></td><td>' + j.file_name + '</td><td>' + j.pages + '</td><td>RM ' + parseFloat(j.total_price).toFixed(2) + '</td><td><button class="btn btn-sm btn-primary" onclick="updateJobStatus(\'' + j.job_id + '\',\'printing\')">Print</button></td></tr>').join('');
+    }).catch(() => {});
+}
+
+async function updateJobStatus(jobId, status) {
+  try {
+    const res = await fetch(API('printer', 'update-job'), {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-Session-Token': token },
+      body: JSON.stringify({ job_id: jobId, status })
+    });
+    const data = await res.json();
+    if (data.success) {
+      loadReadyJobs();
+      loadAll();
+      if (status === 'printing') {
+        setTimeout(() => {
+          fetch(API('printer', 'update-job'), {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'X-Session-Token': token },
+            body: JSON.stringify({ job_id: jobId, status: 'completed' })
+          }).then(() => { loadAll(); loadReadyJobs(); });
+        }, 3000);
+      }
+    } else alert(data.error || 'Failed');
+  } catch(e) { alert('Error'); }
+}
+
+async function simulateJam(type) {
+  try {
+    const res = await fetch(API('printer', 'simulate-jam'), {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-Session-Token': token },
+      body: JSON.stringify({ jam_type: type })
+    });
+    const data = await res.json();
+    if (data.success) { alert(data.message); loadAll(); } else alert(data.error || 'Failed');
+  } catch(e) { alert('Error'); }
+}
+
+async function clearJam() {
+  try {
+    const res = await fetch(API('printer', 'clear-jam'), {
+      method: 'POST', headers: { 'X-Session-Token': token }
+    });
+    const data = await res.json();
+    if (data.success) { alert('Jam cleared'); loadAll(); } else alert(data.error || 'Failed');
+  } catch(e) { alert('Error'); }
+}
+
+async function setSupplyLevels() {
+  const data = {
+    paper_level: parseInt(document.getElementById('setPaper').value),
+    toner_black: parseInt(document.getElementById('setTonerB').value),
+    toner_cyan: parseInt(document.getElementById('setTonerC').value),
+    toner_magenta: parseInt(document.getElementById('setTonerM').value),
+    toner_yellow: parseInt(document.getElementById('setTonerY').value)
+  };
+  try {
+    const res = await fetch(API('printer', 'set-levels'), {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-Session-Token': token },
+      body: JSON.stringify(data)
+    });
+    const r = await res.json();
+    if (r.success) { alert('Levels updated'); loadAll(); } else alert(r.error || 'Failed');
+  } catch(e) { alert('Error'); }
+}
+
+async function markAlertRead(id) {
+  try {
+    await fetch(API('admin', 'mark-alert-read'), {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-Session-Token': token },
+      body: JSON.stringify({ alert_id: id })
+    });
+    loadAlerts();
+    loadAll();
+  } catch(e) {}
+}
+
+async function markAllAlertsRead() {
+  try {
+    await fetch(API('admin', 'mark-all-alerts-read'), {
+      method: 'POST', headers: { 'X-Session-Token': token }
+    });
+    loadAlerts();
+    loadAll();
+  } catch(e) {}
+}
+
+function statusCls(s) {
+  const m = { pending: 'badge-warning', ready_to_print: 'badge-info', printing: 'badge-info', completed: 'badge-success', refund_issued: 'badge-danger' };
+  return m[s] || 'badge-gray';
+}
+
+init();
+</script>
+</body>
+</html>
