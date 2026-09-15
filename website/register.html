@@ -59,7 +59,7 @@
           Position your face in the frame. Auto-detection will capture when ready.
         </p>
         <div style="position:relative; border-radius:var(--radius); overflow:hidden; background:#000;">
-          <video id="video" width="100%" height="280" autoplay muted style="display:block; transform:scaleX(-1);"></video>
+          <video id="video" width="100%" height="280" autoplay muted playsinline style="display:block; transform:scaleX(-1);"></video>
           <canvas id="overlay" style="position:absolute; top:0; left:0; width:100%; height:280px; pointer-events:none; transform:scaleX(-1);"></canvas>
           <div id="faceGuide" style="position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); width:140px; height:170px; border:2px dashed rgba(255,255,255,0.5); border-radius:50%; pointer-events:none;"></div>
         </div>
