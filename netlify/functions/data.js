@@ -1,4 +1,4 @@
-const { json, err, supabaseRequest } = require('./_shared');
+const { json, err, supabaseRequest, supabaseStorageDelete } = require('./_shared');
 
 exports.handler = async (event) => {
   if (event.httpMethod === 'OPTIONS') return json({});
@@ -95,10 +95,16 @@ async function handleCompleteJob(event) {
   if (filePath && filePath.includes('/storage/v1/object/')) {
     try {
       const storageUrl = filePath.split('/storage/v1/object/')[1];
-      const slashIdx = storageUrl.indexOf('/');
-      const bucket = storageUrl.substring(0, slashIdx);
-      const path = storageUrl.substring(slashIdx + 1);
-      await supabaseRequest('DELETE', '/storage/v1/object/' + bucket + '/' + encodeURIComponent(path));
+      const parts = storageUrl.split('/');
+      let bucket, path;
+      if (parts[0] === 'public') {
+        bucket = parts[1];
+        path = parts.slice(2).join('/');
+      } else {
+        bucket = parts[0];
+        path = parts.slice(1).join('/');
+      }
+      await supabaseStorageDelete(bucket, path);
     } catch(e) {}
   }
 
@@ -126,10 +132,16 @@ async function handleDeleteJob(event) {
   if (filePath && filePath.includes('/storage/v1/object/')) {
     try {
       const storageUrl = filePath.split('/storage/v1/object/')[1];
-      const slashIdx = storageUrl.indexOf('/');
-      const bucket = storageUrl.substring(0, slashIdx);
-      const path = storageUrl.substring(slashIdx + 1);
-      await supabaseRequest('DELETE', '/storage/v1/object/' + bucket + '/' + encodeURIComponent(path));
+      const parts = storageUrl.split('/');
+      let bucket, path;
+      if (parts[0] === 'public') {
+        bucket = parts[1];
+        path = parts.slice(2).join('/');
+      } else {
+        bucket = parts[0];
+        path = parts.slice(1).join('/');
+      }
+      await supabaseStorageDelete(bucket, path);
     } catch(e) {}
   }
 

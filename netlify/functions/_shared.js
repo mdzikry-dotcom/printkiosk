@@ -266,6 +266,79 @@ function calculatePrice(pages, colorMode, paperSize, sides, copies) {
   return Math.round(total * 100) / 100;
 }
 
+async function supabaseStorageUpload(bucket, path, fileBuffer, contentType) {
+  const url = SUPABASE_URL + '/storage/v1/object/' + bucket + '/' + path;
+  const headers = {
+    'apikey': SUPABASE_KEY,
+    'Authorization': 'Bearer ' + SUPABASE_KEY,
+    'Content-Type': contentType || 'application/octet-stream',
+    'x-upsert': 'true'
+  };
+  try {
+    const response = await fetch(url, { method: 'POST', headers, body: fileBuffer });
+    const text = await response.text();
+    let parsed;
+    try { parsed = JSON.parse(text); } catch(e) { parsed = text; }
+    if (!response.ok) {
+      return { error: true, message: (typeof parsed === 'object' ? (parsed.message || parsed.error || JSON.stringify(parsed)) : parsed), http_code: response.status };
+    }
+    return { error: false, data: parsed, http_code: response.status };
+  } catch(e) {
+    return { error: true, message: e.message, http_code: 0 };
+  }
+}
+
+async function supabaseStorageDelete(bucket, path) {
+  const url = SUPABASE_URL + '/storage/v1/object/' + bucket + '/' + encodeURIComponent(path);
+  const headers = {
+    'apikey': SUPABASE_KEY,
+    'Authorization': 'Bearer ' + SUPABASE_KEY
+  };
+  try {
+    const response = await fetch(url, { method: 'DELETE', headers });
+    const text = await response.text();
+    let parsed;
+    try { parsed = JSON.parse(text); } catch(e) { parsed = text; }
+    if (!response.ok) {
+      return { error: true, message: (typeof parsed === 'object' ? (parsed.message || parsed.error || JSON.stringify(parsed)) : parsed), http_code: response.status };
+    }
+    return { error: false, data: parsed, http_code: response.status };
+  } catch(e) {
+    return { error: true, message: e.message, http_code: 0 };
+  }
+}
+
+function parseMultipartFormData(bodyOrBuffer, contentType) {
+  const boundaryMatch = contentType.match(/boundary=([^\s;]+)/i);
+  if (!boundaryMatch) return { fields: {}, file: null };
+  const boundary = boundaryMatch[1];
+  const delimiter = '--' + boundary;
+  const body = Buffer.isBuffer(bodyOrBuffer) ? bodyOrBuffer.toString('binary') : String(bodyOrBuffer);
+  const parts = body.split(delimiter).slice(1);
+  const fields = {};
+  let file = null;
+  for (let i = 0; i < parts.length; i++) {
+    let part = parts[i];
+    if (part.startsWith('--\r\n') || part.startsWith('--\n')) break;
+    const headerEnd = part.indexOf('\r\n\r\n');
+    if (headerEnd === -1) continue;
+    const headerSection = part.substring(0, headerEnd);
+    let content = part.substring(headerEnd + 4);
+    if (content.endsWith('\r\n')) content = content.slice(0, -2);
+    const nameMatch = headerSection.match(/name="([^"]+)"/i);
+    if (!nameMatch) continue;
+    const fieldName = nameMatch[1];
+    const filenameMatch = headerSection.match(/filename="([^"]*)"/i);
+    if (filenameMatch) {
+      const ctMatch = headerSection.match(/Content-Type:\s*([^\r\n]+)/i);
+      file = { name: fieldName, filename: filenameMatch[1], contentType: ctMatch ? ctMatch[1].trim() : 'application/octet-stream', data: Buffer.from(content, 'binary') };
+    } else {
+      fields[fieldName] = content.trim();
+    }
+  }
+  return { fields, file };
+}
+
 module.exports = {
   SUPABASE_URL, SUPABASE_KEY, SUPABASE_REST_URL,
   SESSION_DURATION, PRICE_BW_PER_PAGE, PRICE_COLOR_PER_PAGE,
@@ -275,5 +348,6 @@ module.exports = {
   corsHeaders, json, err, supabaseRequest, generateJobId,
   generateSessionToken, validateSession, calculatePrice,
   generateVerificationCode, isValidGmail, isValidMalaysianPhone,
-  normalizePhone, sendVerificationEmail, smtpSend
+  normalizePhone, sendVerificationEmail, smtpSend,
+  supabaseStorageUpload, supabaseStorageDelete, parseMultipartFormData
 };
