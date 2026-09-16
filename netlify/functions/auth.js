@@ -18,6 +18,7 @@ exports.handler = async (event) => {
     case 'logout': return handleLogout(event);
     case 'verify-session': return handleVerifySession(event);
     case 'save-face': return handleSaveFace(event);
+    case 'remove-face': return handleRemoveFace(event);
     case 'verify-pin': return handleVerifyPin(event);
     case 'face-login': return handleFaceLogin(event);
     case 'set-pin': return handleSetPin(event);
@@ -249,6 +250,25 @@ async function handleSaveFace(event) {
 
   if (result.error) return err('Failed to save face data', 500);
   return json({ success: true, message: 'Face data saved successfully' });
+}
+
+async function handleRemoveFace(event) {
+  const session = await validateSession(event);
+  if (!session) return err('Unauthorized', 401);
+
+  let result = await supabaseRequest('PATCH', '/users?id=eq.' + session.user_id, {
+    face_descriptor: null,
+    face_images: null
+  });
+
+  if (result.error && result.error.message && result.error.message.includes('face_images')) {
+    result = await supabaseRequest('PATCH', '/users?id=eq.' + session.user_id, {
+      face_descriptor: null
+    });
+  }
+
+  if (result.error) return err('Failed to remove face data', 500);
+  return json({ success: true, message: 'Face data removed successfully' });
 }
 
 async function handleVerifyPin(event) {

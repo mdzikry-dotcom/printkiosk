@@ -472,6 +472,10 @@
           <button type="button" class="btn btn-secondary" onclick="startFaceUpdate()" id="faceStartBtn">Start Camera</button>
           <button type="button" class="btn btn-primary" onclick="saveFaceUpdate()" id="faceSaveBtn" disabled>Save Face Data</button>
         </div>
+        <div style="display:flex; gap:8px; margin-top:8px; justify-content:center;">
+          <button type="button" class="btn" style="border-color:var(--danger,#dc2626); color:#dc2626;" onclick="closeFaceCamera()" id="faceOffBtn">Turn Off Camera</button>
+          <button type="button" class="btn" style="border-color:var(--danger,#dc2626); color:#dc2626;" onclick="removeFaceData()" id="faceRemoveBtn">Remove Face Data</button>
+        </div>
         <div style="display:flex; gap:8px; margin-top:12px; justify-content:center;">
           <div style="width:64px; height:64px; background:var(--gray-100); border-radius:var(--radius); display:flex; align-items:center; justify-content:center; border:2px dashed var(--gray-200);" id="facePreview1"></div>
           <div style="width:64px; height:64px; background:var(--gray-100); border-radius:var(--radius); display:flex; align-items:center; justify-content:center; border:2px dashed var(--gray-200);" id="facePreview2"></div>
@@ -1838,6 +1842,49 @@ async function openFaceCamera() {
   } catch(e) {
     status.textContent = 'Camera access denied.';
   }
+}
+
+function closeFaceCamera() {
+  var status = document.getElementById('faceStatus');
+  if (faceUpdateInterval) { clearInterval(faceUpdateInterval); faceUpdateInterval = null; }
+  if (faceUpdateStream) {
+    faceUpdateStream.getTracks().forEach(function(t) { t.stop(); });
+    faceUpdateStream = null;
+  }
+  var video = document.getElementById('faceVideo');
+  if (video.srcObject) { video.srcObject = null; }
+  document.getElementById('faceStartBtn').disabled = false;
+  document.getElementById('faceStartBtn').textContent = 'Start Camera';
+  document.getElementById('faceSaveBtn').disabled = true;
+  status.textContent = 'Camera turned off.';
+  status.style.color = '';
+}
+
+function removeFaceData() {
+  if (!confirm('Remove your face data? You will no longer be able to use face login on kiosk.')) return;
+  closeFaceCamera();
+  var status = document.getElementById('faceStatus');
+  status.textContent = 'Removing face data...';
+  status.style.color = '';
+  var btn = document.getElementById('faceRemoveBtn');
+  btn.disabled = true;
+  fetch(API('auth', 'remove-face'), {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'X-Session-Token': token }
+  }).then(function(r) { return r.json(); }).then(function(data) {
+    btn.disabled = false;
+    if (data.success) {
+      status.textContent = 'Face data removed.';
+      status.style.color = '#16a34a';
+    } else {
+      status.textContent = data.error || 'Failed to remove face data.';
+      status.style.color = '';
+    }
+  }).catch(function() {
+    btn.disabled = false;
+    status.textContent = 'Connection error. Please try again.';
+    status.style.color = '';
+  });
 }
 
 function runFaceUpdateDetection() {
