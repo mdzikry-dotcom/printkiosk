@@ -178,7 +178,7 @@ window.addEventListener('load', async () => {
       if (faceapi.tf.setWasmPaths) faceapi.tf.setWasmPaths('https://cdn.jsdelivr.net/npm/@tensorflow/tfjs-backend-wasm@4.22.0/dist/');
       if (faceapi.tf.env && faceapi.tf.env().set) {
         faceapi.tf.env().set('WASM_HAS_MULTITHREAD_SUPPORT', false);
-        faceapi.tf.env().set('WASM_HAS_SIMD_SUPPORT', true);
+        faceapi.tf.env().set('WASM_HAS_SIMD_SUPPORT', false);
       }
     } catch(e) {}
     var isApple = /iP(hone|ad|od)|Macintosh/.test(navigator.userAgent);
