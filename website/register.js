@@ -41,7 +41,8 @@ async function initFaceBackend() {
   try {
     if (faceapi.tf.setWasmPaths) faceapi.tf.setWasmPaths('https://cdn.jsdelivr.net/npm/@tensorflow/tfjs-backend-wasm@4.22.0/dist/');
   } catch (e) {}
-  const backends = ['webgl', 'wasm', 'cpu'];
+  const isApple = /iP(hone|ad|od)|Macintosh/.test(navigator.userAgent);
+  const backends = isApple ? ['wasm', 'webgl', 'cpu'] : ['webgl', 'wasm', 'cpu'];
   for (const b of backends) {
     try { await faceapi.tf.setBackend(b); await faceapi.tf.ready(); return true; } catch (e) {}
   }
