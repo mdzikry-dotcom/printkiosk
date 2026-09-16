@@ -1,4 +1,4 @@
-const { json, err, supabaseRequest, validateSession, generateJobId, calculatePrice, ALLOWED_EXTENSIONS, SUPABASE_URL, supabaseStorageUpload, parseMultipartFormData } = require('./_shared');
+const { json, err, supabaseRequest, validateSession, generateJobId, calculatePrice, ALLOWED_EXTENSIONS, SUPABASE_URL, supabaseStorageSignedUrl, parseMultipartFormData, EXT_MIME_MAP } = require('./_shared');
 
 exports.handler = async (event) => {
   if (event.httpMethod === 'OPTIONS') return json({});
@@ -11,8 +11,55 @@ exports.handler = async (event) => {
 
   if (event.httpMethod !== 'POST') return err('Method not allowed', 405);
 
+  if (url.searchParams.get('action') === 'sign-upload') {
+    return handleSignUpload(event);
+  }
+
   return handleUpload(event);
 };
+
+// Returns a signed upload URL so the browser can PUT bytes directly to Supabase
+// Storage, bypassing Netlify's 6MB request-body limit entirely.
+async function handleSignUpload(event) {
+  const session = await validateSession(event);
+
+  let body;
+  try {
+    body = JSON.parse(event.body || '{}');
+  } catch (e) {
+    return err('Invalid request body');
+  }
+
+  const fileName = String(body.file_name || '');
+  if (!fileName || !ALLOWED_EXTENSIONS.includes(getExtension(fileName))) {
+    return err('File type not allowed. Allowed: ' + ALLOWED_EXTENSIONS.join(', '));
+  }
+
+  const size = parseInt(body.file_size, 10);
+  if (!size || size <= 0) return err('file_size required');
+  if (size > 20 * 1024 * 1024) return err('File too large. Maximum 20MB.');
+
+  const ext = getExtension(fileName);
+  const contentType = EXT_MIME_MAP[ext] || 'application/octet-stream';
+
+  const jobId = generateJobId();
+  const safeName = 'print_' + Date.now() + '_' + fileName.replace(/[^a-zA-Z0-9._-]/g, '_');
+  const storagePath = jobId + '/' + safeName;
+
+  const signed = await supabaseStorageSignedUrl('print-jobs', storagePath);
+  if (signed.error) {
+    return err('Failed to create upload URL: ' + signed.message, 500);
+  }
+
+  return json({
+    success: true,
+    job_id: jobId,
+    storage_path: storagePath,
+    upload_url: signed.uploadUrl,
+    public_url: SUPABASE_URL + '/storage/v1/object/public/print-jobs/' + storagePath,
+    content_type: contentType
+  });
+}
 
 async function handleLookupPin(url) {
   const pin = url.searchParams.get('pin') || '';
@@ -168,7 +215,7 @@ async function handleUpload(event) {
     printPin = requestedPin(body.print_pin);
     if (!printPin) printPin = String(Math.floor(100000 + Math.random() * 900000));
 
-    const jobId = generateJobId();
+    const jobId = body.job_id || generateJobId();
 
     const jobData = {
       job_id: jobId,

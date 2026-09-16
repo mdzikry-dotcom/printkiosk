@@ -503,13 +503,66 @@ async function submitPhoneUpload() {
     });
   }
 
+  function uploadFail(msg) {
+    alert(msg);
+    btn.disabled = false;
+    btn.textContent = 'Upload & Pay';
+  }
+
   try {
-    var res = await fetch(API('upload'), {
-      method: 'POST',
-      headers: { 'X-Session-Token': qToken },
-      body: formData
-    });
-    var data = await parseRes(res);
+    var fileName = phoneFile.name || 'file';
+    var data;
+    if (IS_NETLIFY) {
+      // Signed upload: bytes go directly to Supabase Storage (Netlify's 6MB cap never applies)
+      var signRes = await fetch(API('upload', 'sign-upload'), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-Session-Token': qToken },
+        body: JSON.stringify({ file_name: fileName, file_size: phoneFile.size || 1 })
+      });
+      var signD = await parseRes(signRes);
+      if (!signRes.ok && !signD.success) { uploadFail(signD.error || 'Upload failed'); return; }
+
+      var upRes = await fetch(signD.upload_url, {
+        method: 'PUT',
+        headers: { 'Content-Type': signD.content_type || phoneFile.type || 'application/octet-stream', 'x-upsert': 'true' },
+        body: phoneFile
+      });
+      if (!upRes.ok) {
+        var upMsg = 'Storage upload failed (HTTP ' + upRes.status + ')';
+        try { var upJ = JSON.parse(await upRes.text()); upMsg = upJ.message || upJ.error || upMsg; } catch (e) {}
+        uploadFail(upMsg);
+        return;
+      }
+
+      var jobRes = await fetch(API('upload'), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-Session-Token': qToken },
+        body: JSON.stringify({
+          job_id: signD.job_id,
+          file_url: signD.public_url,
+          file_name: fileName,
+          print_pin: '',
+          color_mode: document.getElementById('pColorMode').value,
+          paper_size: 'a4',
+          sides: 'single',
+          copies: document.getElementById('pCopies').value,
+          pages: document.getElementById('pPages').value,
+          brightness: document.getElementById('pBrightness').value,
+          contrast: document.getElementById('pContrast').value,
+          crop_mode: document.getElementById('pCropMode').value,
+          finish: 'none'
+        })
+      });
+      data = await parseRes(jobRes);
+      if (!jobRes.ok && !data.success) { uploadFail(data.error || 'Upload failed'); return; }
+    } else {
+      var res = await fetch(API('upload'), {
+        method: 'POST',
+        headers: { 'X-Session-Token': qToken },
+        body: formData
+      });
+      data = await parseRes(res);
+    }
     if (data.success) {
       phoneUploadedJob = data.job;
       phoneCurrentJobId = data.job.job_id;

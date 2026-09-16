@@ -1234,34 +1234,91 @@ async function placeOrder() {
     return new Blob([buf], { type: file.type || 'application/octet-stream' });
   }
 
+  async function parseJsonResponse(r, fallbackMsg) {
+    const raw = await r.text();
+    try { return JSON.parse(raw); } catch (e) { return { success: false, error: fallbackMsg }; }
+  }
+
+  // Bytes go straight to Supabase Storage via a signed URL, so Netlify's 6MB
+  // request-body limit never applies. Steps: 1) sign 2) PUT to storage 3) create job row.
+  async function uploadJobNetlify(file, s, orderPin, sessionToken) {
+    var fileName = file.name || 'file';
+    var signRes = await fetch(API('upload', 'sign-upload'), {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-Session-Token': sessionToken || '' },
+      body: JSON.stringify({ file_name: fileName, file_size: file.size || 1 })
+    });
+    var signD = await parseJsonResponse(signRes, 'Server returned an invalid response (HTTP ' + signRes.status + ')');
+    if (!signRes.ok && !signD.success) throw new Error(signD.error || ('Upload failed (HTTP ' + signRes.status + ')'));
+    if (!signD.success) throw new Error(signD.error || 'Upload failed');
+
+    var upRes = await fetch(signD.upload_url, {
+      method: 'PUT',
+      headers: { 'Content-Type': signD.content_type || file.type || 'application/octet-stream', 'x-upsert': 'true' },
+      body: file
+    });
+    if (!upRes.ok) {
+      var upMsg = 'Storage upload failed (HTTP ' + upRes.status + ')';
+      try { var upJ = JSON.parse(await upRes.text()); upMsg = upJ.message || upJ.error || upMsg; } catch (e) {}
+      throw new Error(upMsg);
+    }
+
+    var jobRes = await fetch(API('upload'), {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-Session-Token': sessionToken || '' },
+      body: JSON.stringify({
+        job_id: signD.job_id,
+        file_url: signD.public_url,
+        file_name: fileName,
+        print_pin: orderPin,
+        color_mode: s.color || 'bw',
+        paper_size: 'a4',
+        sides: 'single',
+        copies: s.copies || 1,
+        pages: s.pages || 1,
+        brightness: s.brightness || 0,
+        contrast: s.contrast || 0,
+        crop_mode: s.crop_mode || 'none',
+        finish: 'none'
+      })
+    });
+    var jobD = await parseJsonResponse(jobRes, 'Server returned an invalid response (HTTP ' + jobRes.status + ')');
+    if (!jobRes.ok && !jobD.success) throw new Error(jobD.error || ('Upload failed (HTTP ' + jobRes.status + ')'));
+    if (!jobD.success) throw new Error(jobD.error || 'Upload failed');
+    return jobD;
+  }
+
   try {
     for (let i = 0; i < bulkFiles.length; i++) {
       btn.textContent = 'Uploading file ' + (i + 1) + ' of ' + bulkFiles.length + '...';
       const item = bulkFiles[i];
       const s = item.settings;
-      const fd = new FormData();
-      var blob = await fileToBlob(item.file);
-      fd.append('file', blob, item.file.name || 'file');
-      fd.append('print_pin', orderPin);
-      fd.append('color_mode', s.color || 'bw');
-      fd.append('paper_size', 'a4');
-      fd.append('sides', 'single');
-      fd.append('copies', s.copies || 1);
-      fd.append('pages', s.pages || 1);
-      fd.append('brightness', s.brightness || 0);
-      fd.append('contrast', s.contrast || 0);
-      fd.append('crop_mode', s.crop_mode || 'none');
-      fd.append('finish', 'none');
-
-      const r = await fetch(API('upload'), {
-        method: 'POST',
-        headers: { 'X-Session-Token': token || '' },
-        body: fd
-      });
-      const raw = await r.text();
       var d;
-      try { d = JSON.parse(raw); } catch (e) { d = { success: false, error: 'Server returned an invalid response (HTTP ' + r.status + ')' }; }
-      if (!r.ok && !d.success) { throw new Error(d.error || ('Upload failed (HTTP ' + r.status + ')')); }
+      if (IS_NETLIFY) {
+        d = await uploadJobNetlify(item.file, s, orderPin, token);
+      } else {
+        const fd = new FormData();
+        var blob = await fileToBlob(item.file);
+        fd.append('file', blob, item.file.name || 'file');
+        fd.append('print_pin', orderPin);
+        fd.append('color_mode', s.color || 'bw');
+        fd.append('paper_size', 'a4');
+        fd.append('sides', 'single');
+        fd.append('copies', s.copies || 1);
+        fd.append('pages', s.pages || 1);
+        fd.append('brightness', s.brightness || 0);
+        fd.append('contrast', s.contrast || 0);
+        fd.append('crop_mode', s.crop_mode || 'none');
+        fd.append('finish', 'none');
+
+        const r = await fetch(API('upload'), {
+          method: 'POST',
+          headers: { 'X-Session-Token': token || '' },
+          body: fd
+        });
+        d = await parseJsonResponse(r, 'Server returned an invalid response (HTTP ' + r.status + ')');
+        if (!r.ok && !d.success) { throw new Error(d.error || ('Upload failed (HTTP ' + r.status + ')')); }
+      }
       if (d.success && d.job) {
         pendingUploadJobs.push(d.job);
       } else {

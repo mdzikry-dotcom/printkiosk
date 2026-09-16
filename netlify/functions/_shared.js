@@ -301,6 +301,39 @@ async function supabaseStorageUpload(bucket, path, fileBuffer, contentType) {
   }
 }
 
+async function supabaseStorageSignedUrl(bucket, path) {
+  const url = SUPABASE_URL + '/storage/v1/object/upload/sign/' + bucket + '/' + path;
+  const headers = {
+    'apikey': SUPABASE_KEY,
+    'Authorization': 'Bearer ' + SUPABASE_KEY
+  };
+  try {
+    const response = await fetch(url, { method: 'POST', headers });
+    const text = await response.text();
+    let parsed;
+    try { parsed = JSON.parse(text); } catch(e) { parsed = text; }
+    if (!response.ok) {
+      return { error: true, message: (typeof parsed === 'object' ? (parsed.message || parsed.error || JSON.stringify(parsed)) : parsed), http_code: response.status };
+    }
+    const relUrl = (typeof parsed === 'object' && parsed) ? (parsed.url || parsed.signedUrl || '') : '';
+    if (!relUrl) {
+      return { error: true, message: 'No upload URL returned from storage', http_code: 500 };
+    }
+    return { error: false, data: parsed, uploadUrl: SUPABASE_URL + '/storage/v1' + relUrl, http_code: response.status };
+  } catch(e) {
+    return { error: true, message: e.message, http_code: 0 };
+  }
+}
+
+const EXT_MIME_MAP = {
+  'pdf': 'application/pdf',
+  'doc': 'application/msword',
+  'docx': 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+  'jpg': 'image/jpeg',
+  'jpeg': 'image/jpeg',
+  'png': 'image/png'
+};
+
 async function supabaseStorageDelete(bucket, path) {
   const url = SUPABASE_URL + '/storage/v1/object/' + bucket + '/' + encodeURIComponent(path);
   const headers = {
@@ -362,5 +395,5 @@ module.exports = {
   generateSessionToken, validateSession, calculatePrice,
   generateVerificationCode, isValidGmail, isValidMalaysianPhone,
   normalizePhone, sendVerificationEmail, smtpSend,
-  supabaseStorageUpload, supabaseStorageDelete, parseMultipartFormData
+  supabaseStorageUpload, supabaseStorageSignedUrl, supabaseStorageDelete, parseMultipartFormData, EXT_MIME_MAP
 };
