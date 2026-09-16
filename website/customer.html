@@ -1825,6 +1825,7 @@ async function openFaceCamera() {
   try {
     faceUpdateStream = await navigator.mediaDevices.getUserMedia({ video: { width: 640, height: 480, facingMode: 'user' } });
     document.getElementById('faceVideo').srcObject = faceUpdateStream;
+    try { await document.getElementById('faceVideo').play(); } catch(e) {}
     document.getElementById('faceStartBtn').disabled = true;
     document.getElementById('faceStartBtn').textContent = 'Camera Active';
     status.textContent = 'Detecting face... Look at the camera.';
@@ -1895,11 +1896,20 @@ function runFaceUpdateDetection() {
   var frameCanvas = document.createElement('canvas');
   var frameCtx = frameCanvas.getContext('2d');
 
+  var lastBlockedAt = 0;
   faceUpdateInterval = setInterval(async function() {
-    if (faceUpdateCaptures >= 3 || !faceUpdateStream || video.paused || video.ended) {
+    if (faceUpdateCaptures >= 3 || !faceUpdateStream || video.ended) {
       clearInterval(faceUpdateInterval);
       return;
     }
+    if (video.paused) {
+      var now2 = Date.now();
+      if (!lastBlockedAt) lastBlockedAt = now2;
+      if (now2 - lastBlockedAt > 5000) { clearInterval(faceUpdateInterval); status.textContent = 'Camera stream stalled. Tap Start again.'; return; }
+      try { video.play(); } catch(e) {}
+      return;
+    }
+    lastBlockedAt = 0;
     try {
       frameCanvas.width = video.videoWidth;
       frameCanvas.height = video.videoHeight;

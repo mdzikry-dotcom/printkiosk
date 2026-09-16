@@ -82,7 +82,9 @@ document.getElementById('startCamBtn').addEventListener('click', async () => {
   }
   try {
     videoStream = await navigator.mediaDevices.getUserMedia({ video: { width: 640, height: 480, facingMode: 'user' } });
-    document.getElementById('video').srcObject = videoStream;
+    const videoEl = document.getElementById('video');
+    videoEl.srcObject = videoStream;
+    try { await videoEl.play(); } catch(e) {}
     document.getElementById('startCamBtn').disabled = true;
     document.getElementById('startCamBtn').textContent = 'Camera Active';
     document.getElementById('faceStatus').textContent = 'Detecting face... Look at the camera.';
@@ -99,12 +101,21 @@ function startAutoDetection() {
   const frameCanvas = document.createElement('canvas');
   const frameCtx = frameCanvas.getContext('2d');
   let lastCaptureTime = 0;
+  let lastBlockedAt = 0;
 
   faceDetectionInterval = setInterval(async () => {
-    if (faceCaptures >= 3 || !videoStream || video.paused || video.ended) {
+    if (faceCaptures >= 3 || !videoStream || video.ended) {
       clearInterval(faceDetectionInterval);
       return;
     }
+    if (video.paused) {
+      const now2 = Date.now();
+      if (!lastBlockedAt) lastBlockedAt = now2;
+      if (now2 - lastBlockedAt > 5000) { clearInterval(faceDetectionInterval); status.textContent = 'Camera stream stalled. Tap Start again.'; return; }
+      try { video.play(); } catch(e) {}
+      return;
+    }
+    lastBlockedAt = 0;
 
     try {
       frameCanvas.width = video.videoWidth;
