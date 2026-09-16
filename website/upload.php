@@ -474,7 +474,8 @@ async function submitPhoneUpload() {
   btn.textContent = 'Uploading...';
 
   var formData = new FormData();
-  formData.append('file', phoneFile);
+  var blob = await phoneFile.arrayBuffer().then(function(b) { return new Blob([b], { type: phoneFile.type || 'application/octet-stream' }); });
+  formData.append('file', blob, phoneFile.name || 'file');
   formData.append('color_mode', document.getElementById('pColorMode').value);
   formData.append('paper_size', 'a4');
   formData.append('sides', 'single');
@@ -494,7 +495,9 @@ async function submitPhoneUpload() {
       headers: { 'X-Session-Token': qToken },
       body: formData
     });
-    var data = await res.json();
+    var data = await res.text().then(function(raw) {
+      try { return JSON.parse(raw); } catch (e) { return { success: false, error: 'Server returned an invalid response (HTTP ' + res.status + ')' }; }
+    });
     if (data.success) {
       phoneUploadedJob = data.job;
       phoneCurrentJobId = data.job.job_id;

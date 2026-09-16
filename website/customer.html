@@ -1229,13 +1229,19 @@ async function placeOrder() {
 
   var orderPin = String(Math.floor(100000 + Math.random() * 900000));
 
+  async function fileToBlob(file) {
+    var buf = await file.arrayBuffer();
+    return new Blob([buf], { type: file.type || 'application/octet-stream' });
+  }
+
   try {
     for (let i = 0; i < bulkFiles.length; i++) {
       btn.textContent = 'Uploading file ' + (i + 1) + ' of ' + bulkFiles.length + '...';
       const item = bulkFiles[i];
       const s = item.settings;
       const fd = new FormData();
-      fd.append('file', item.file);
+      var blob = await fileToBlob(item.file);
+      fd.append('file', blob, item.file.name || 'file');
       fd.append('print_pin', orderPin);
       fd.append('color_mode', s.color || 'bw');
       fd.append('paper_size', 'a4');
@@ -1252,9 +1258,14 @@ async function placeOrder() {
         headers: { 'X-Session-Token': token || '' },
         body: fd
       });
-      const d = await r.json();
+      const raw = await r.text();
+      var d;
+      try { d = JSON.parse(raw); } catch (e) { d = { success: false, error: 'Server returned an invalid response (HTTP ' + r.status + ')' }; }
+      if (!r.ok && !d.success) { throw new Error(d.error || ('Upload failed (HTTP ' + r.status + ')')); }
       if (d.success && d.job) {
         pendingUploadJobs.push(d.job);
+      } else {
+        throw new Error(d.error || 'Upload failed');
       }
     }
   } catch (e) {
