@@ -18,7 +18,7 @@
 <script src="pstore.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
 <script>pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';</script>
-<script src="https://cdn.jsdelivr.net/npm/face-api.js@0.22.2/dist/face-api.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@vladmandic/face-api@1.7.15/dist/face-api.min.js"></script>
 <style>
   /* ===== LIQUID BOTTOM NAVIGATION (mobile/app only) ===== */
   .liquid-nav { display: none; }
@@ -1771,8 +1771,20 @@ let faceUpdateStream = null;
 let faceUpdateInterval = null;
 let faceModelsLoaded = false;
 
+async function initFaceBackend() {
+  try {
+    if (faceapi.tf.setWasmPaths) faceapi.tf.setWasmPaths('https://cdn.jsdelivr.net/npm/@tensorflow/tfjs-backend-wasm@4.22.0/dist/');
+  } catch(e) {}
+  var backends = ['webgl', 'wasm', 'cpu'];
+  for (var i = 0; i < backends.length; i++) {
+    try { await faceapi.tf.setBackend(backends[i]); await faceapi.tf.ready(); return true; } catch(e) {}
+  }
+  return false;
+}
+
 async function loadFaceModelsForUpdate() {
   if (faceModelsLoaded) return true;
+  await initFaceBackend();
   var urls = ['https://cdn.jsdelivr.net/npm/@vladmandic/face-api@1.7.15/model', '../models'];
   for (var i = 0; i < urls.length; i++) {
     try {

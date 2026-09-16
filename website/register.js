@@ -37,11 +37,23 @@ function validatePhoneInput() {
 }
 
 // --- Face capture ---
+async function initFaceBackend() {
+  try {
+    if (faceapi.tf.setWasmPaths) faceapi.tf.setWasmPaths('https://cdn.jsdelivr.net/npm/@tensorflow/tfjs-backend-wasm@4.22.0/dist/');
+  } catch (e) {}
+  const backends = ['webgl', 'wasm', 'cpu'];
+  for (const b of backends) {
+    try { await faceapi.tf.setBackend(b); await faceapi.tf.ready(); return true; } catch (e) {}
+  }
+  return false;
+}
+
 async function loadFaceModels() {
   const modelUrls = [
     'https://cdn.jsdelivr.net/npm/@vladmandic/face-api@1.7.15/model',
     '../models'
   ];
+  await initFaceBackend();
   for (const url of modelUrls) {
     try {
       await faceapi.nets.ssdMobilenetv1.loadFromUri(url);
