@@ -40,6 +40,10 @@ function validatePhoneInput() {
 async function initFaceBackend() {
   try {
     if (faceapi.tf.setWasmPaths) faceapi.tf.setWasmPaths('https://cdn.jsdelivr.net/npm/@tensorflow/tfjs-backend-wasm@4.22.0/dist/');
+    if (faceapi.tf.env && faceapi.tf.env().set) {
+      faceapi.tf.env().set('WASM_HAS_MULTITHREAD_SUPPORT', false);
+      faceapi.tf.env().set('WASM_HAS_SIMD_SUPPORT', true);
+    }
   } catch (e) {}
   const isApple = /iP(hone|ad|od)|Macintosh/.test(navigator.userAgent);
   const backends = isApple ? ['wasm', 'webgl', 'cpu'] : ['webgl', 'wasm', 'cpu'];
