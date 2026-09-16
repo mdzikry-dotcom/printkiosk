@@ -227,6 +227,8 @@ async function startFaceDetection() {
   const video = document.getElementById('kioskCam');
   const canvas = document.getElementById('kioskCanvas');
   const ctx = canvas.getContext('2d');
+  const frameCanvas = document.createElement('canvas');
+  const frameCtx = frameCanvas.getContext('2d');
 
   let labeledDescriptors = [];
   try {
@@ -247,7 +249,10 @@ async function startFaceDetection() {
     if (!modelsLoaded || !video.videoWidth) { animFrameId = requestAnimationFrame(detect); return; }
 
     try {
-      const det = await faceapi.detectSingleFace(video).withFaceLandmarks().withFaceDescriptor();
+      frameCanvas.width = video.videoWidth;
+      frameCanvas.height = video.videoHeight;
+      frameCtx.drawImage(video, 0, 0);
+      const det = await faceapi.detectSingleFace(frameCanvas).withFaceLandmarks().withFaceDescriptor();
       ctx.clearRect(0, 0, canvas.width, canvas.height);
 
       if (det) {
@@ -301,7 +306,11 @@ async function startFaceDetection() {
         document.getElementById('faceDot').className = 'dot dot-yellow';
         document.getElementById('faceStatusText').textContent = 'Look at the camera';
       }
-    } catch(e) {}
+    } catch(e) {
+      console.warn('face detect error', e);
+      document.getElementById('faceDot').className = 'dot dot-red';
+      document.getElementById('faceStatusText').textContent = 'Face scanning error';
+    }
     animFrameId = requestAnimationFrame(detect);
   }
   detect();

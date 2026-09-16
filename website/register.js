@@ -91,6 +91,8 @@ function startAutoDetection() {
   const video = document.getElementById('video');
   const overlay = document.getElementById('overlay');
   const status = document.getElementById('faceStatus');
+  const frameCanvas = document.createElement('canvas');
+  const frameCtx = frameCanvas.getContext('2d');
   let lastCaptureTime = 0;
 
   faceDetectionInterval = setInterval(async () => {
@@ -100,7 +102,10 @@ function startAutoDetection() {
     }
 
     try {
-      const detections = await faceapi.detectSingleFace(video)
+      frameCanvas.width = video.videoWidth;
+      frameCanvas.height = video.videoHeight;
+      frameCtx.drawImage(video, 0, 0);
+      const detections = await faceapi.detectSingleFace(frameCanvas)
         .withFaceLandmarks()
         .withFaceDescriptor();
 
@@ -147,7 +152,10 @@ function startAutoDetection() {
         status.textContent = 'No face detected. Look at the camera.';
         status.style.color = '';
       }
-    } catch (e) {}
+    } catch (e) {
+      console.warn('face detect error', e);
+      status.textContent = 'Face scanning error';
+    }
   }, 300);
 }
 
