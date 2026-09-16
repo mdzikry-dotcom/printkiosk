@@ -854,7 +854,7 @@ function updateSummary() {
   document.getElementById('summaryFile').textContent = bulkFiles.length + ' file' + (bulkFiles.length > 1 ? 's' : '');
   document.getElementById('summaryTotal').textContent = 'RM ' + currentPrice.toFixed(2);
   document.getElementById('payAmount').textContent = 'RM ' + currentPrice.toFixed(2);
-  document.getElementById('earnCoins').textContent = Math.floor(currentPrice);
+  document.getElementById('earnCoins').textContent = bulkFiles.length;
 }
 
 /* ===== LIVE PREVIEW ===== */
@@ -1374,7 +1374,7 @@ async function placeOrder() {
   document.getElementById('payColor').textContent = bulkColor === 'color' ? 'Color' : bulkColor === 'mixed' ? 'Mixed' : 'B&W';
   document.getElementById('payCopies').textContent = totalCopies;
   document.getElementById('payTotal').textContent = 'RM ' + totalPrice.toFixed(2);
-  document.getElementById('payEarnCoins').textContent = Math.floor(totalPrice);
+  document.getElementById('payEarnCoins').textContent = pendingUploadJobs.length;
   document.getElementById('payAmountPost').textContent = 'RM ' + totalPrice.toFixed(2);
   document.getElementById('confirmPayBtn').disabled = false;
   loadJobs();
@@ -1466,7 +1466,7 @@ function showReceipt(serverJobs, job) {
   document.getElementById('receiptColor').textContent = displayColor === 'color' ? 'Color' : displayColor === 'mixed' ? 'Mixed' : 'B&W';
   document.getElementById('receiptCopies').textContent = 'x' + totalCopies;
   document.getElementById('receiptTotal').textContent = 'RM ' + totalPrice.toFixed(2);
-  document.getElementById('receiptCoins').textContent = Math.floor(totalPrice);
+  document.getElementById('receiptCoins').textContent = serverJobs.length;
   document.getElementById('paymentMsg').textContent = 'Your print job is ready! Use the PIN at the kiosk.';
 }
 
@@ -1678,7 +1678,7 @@ function returnToPayment(jobId, price) {
     document.getElementById('payColor').textContent = job.color_mode || 'B&W';
     document.getElementById('payCopies').textContent = 'x' + (job.copies || 1);
     document.getElementById('payTotal').textContent = 'RM ' + price;
-    document.getElementById('payEarnCoins').textContent = Math.floor(parseFloat(price));
+    document.getElementById('payEarnCoins').textContent = 1;
   }
   switchPage('upload');
   goStep(3);

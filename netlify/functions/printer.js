@@ -184,7 +184,7 @@ async function simulateJam(event) {
           });
           if (!userResult.error && userResult.data && userResult.data.length > 0) {
             const currentCoins = userResult.data[0].coins;
-            const coinsRefund = Math.floor(job.total_price);
+            const coinsRefund = 1;
             await supabaseRequest('PATCH', '/users?id=eq.' + job.user_id, {
               coins: currentCoins + coinsRefund
             });

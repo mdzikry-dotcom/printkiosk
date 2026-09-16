@@ -58,7 +58,7 @@ async function handlePaymentConfirm(event) {
 
   let coinsEarned = 0;
   if (job.user_id) {
-    coinsEarned = Math.floor(job.total_price);
+    coinsEarned = 1;
 
     const userResult = await supabaseRequest('GET', '/users', null, {
       'id': 'eq.' + job.user_id,
